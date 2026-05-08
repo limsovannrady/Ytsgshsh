@@ -71,6 +71,14 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
+export interface SettingsResponse {
+  [key: string]: string;
+}
+
+export interface SettingsBody {
+  [key: string]: string;
+}
+
 export interface ErrorResponse {
   error: string;
 }

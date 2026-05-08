@@ -24,6 +24,8 @@ import type {
   HealthStatus,
   PaymentRecord,
   PosInfoResponse,
+  SettingsBody,
+  SettingsResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -361,6 +363,169 @@ export function useGetPosInfo<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Get saved merchant configuration
+ * @summary Get merchant settings
+ */
+export const getGetSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const getSettings = async (
+  options?: RequestInit,
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getGetSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSettingsQueryKey = () => {
+  return [`/api/settings`] as const;
+};
+
+export const getGetSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({
+    signal,
+  }) => getSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSettings>>
+>;
+export type GetSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get merchant settings
+ */
+
+export function useGetSettings<
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Save merchant configuration to database
+ * @summary Save merchant settings
+ */
+export const getSaveSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const saveSettings = async (
+  settingsBody: SettingsBody,
+  options?: RequestInit,
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getSaveSettingsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(settingsBody),
+  });
+};
+
+export const getSaveSettingsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSettings>>,
+    TError,
+    { data: BodyType<SettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveSettings>>,
+  TError,
+  { data: BodyType<SettingsBody> },
+  TContext
+> => {
+  const mutationKey = ["saveSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveSettings>>,
+    { data: BodyType<SettingsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveSettings>>
+>;
+export type SaveSettingsMutationBody = BodyType<SettingsBody>;
+export type SaveSettingsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Save merchant settings
+ */
+export const useSaveSettings = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSettings>>,
+    TError,
+    { data: BodyType<SettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveSettings>>,
+  TError,
+  { data: BodyType<SettingsBody> },
+  TContext
+> => {
+  return useMutation(getSaveSettingsMutationOptions(options));
+};
 
 /**
  * Get recent payment transactions

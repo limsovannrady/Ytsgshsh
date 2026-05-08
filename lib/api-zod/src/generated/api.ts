@@ -65,6 +65,20 @@ export const GetPosInfoResponse = zod.object({
 });
 
 /**
+ * Get saved merchant configuration
+ * @summary Get merchant settings
+ */
+export const GetSettingsResponse = zod.record(zod.string(), zod.string());
+
+/**
+ * Save merchant configuration to database
+ * @summary Save merchant settings
+ */
+export const SaveSettingsBody = zod.record(zod.string(), zod.string());
+
+export const SaveSettingsResponse = zod.record(zod.string(), zod.string());
+
+/**
  * Get recent payment transactions
  * @summary Get payment history
  */

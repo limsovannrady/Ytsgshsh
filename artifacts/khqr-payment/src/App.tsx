@@ -7,11 +7,12 @@ import CheckPaymentTab from "@/tabs/CheckPaymentTab";
 import HistoryTab from "@/tabs/HistoryTab";
 import PosTab from "@/tabs/PosTab";
 import DocsTab from "@/tabs/DocsTab";
+import SettingsTab from "@/tabs/SettingsTab";
 import { BottomNav } from "@/components/BottomNav";
 
 const queryClient = new QueryClient();
 
-export type TabId = "home" | "check" | "history" | "pos" | "docs";
+export type TabId = "home" | "check" | "history" | "pos" | "docs" | "settings";
 
 function App() {
   const [tab, setTab] = useState<TabId>("home");
@@ -26,6 +27,7 @@ function App() {
             {tab === "history" && <HistoryTab />}
             {tab === "pos" && <PosTab />}
             {tab === "docs" && <DocsTab />}
+            {tab === "settings" && <SettingsTab />}
           </main>
           <BottomNav active={tab} onChange={setTab} />
         </div>

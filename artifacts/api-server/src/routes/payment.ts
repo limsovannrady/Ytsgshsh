@@ -3,21 +3,23 @@ import { db, paymentsTable } from "@workspace/db";
 import { GetPaymentHistoryResponse } from "@workspace/api-zod";
 import { desc, eq } from "drizzle-orm";
 import { createRequire } from "module";
-import crypto from "crypto";
+import { getAllSettings } from "./settings.js";
 
 const require = createRequire(import.meta.url);
 const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
 
 const router: IRouter = Router();
 
-function getMerchantConfig() {
-  const accountId = process.env["BAKONG_ACCOUNT_ID"];
-  const merchantName = process.env["MERCHANT_NAME"];
-  const merchantCity = process.env["MERCHANT_CITY"] || "Phnom Penh";
-  const acquiringBank = process.env["ACQUIRING_BANK"] || "";
+async function getMerchantConfig() {
+  const settings = await getAllSettings();
 
-  if (!accountId) throw new Error("BAKONG_ACCOUNT_ID is not set");
-  if (!merchantName) throw new Error("MERCHANT_NAME is not set");
+  const accountId = settings["BAKONG_ACCOUNT_ID"] || process.env["BAKONG_ACCOUNT_ID"];
+  const merchantName = settings["MERCHANT_NAME"] || process.env["MERCHANT_NAME"];
+  const merchantCity = settings["MERCHANT_CITY"] || process.env["MERCHANT_CITY"] || "Phnom Penh";
+  const acquiringBank = settings["ACQUIRING_BANK"] || process.env["ACQUIRING_BANK"] || "";
+
+  if (!accountId) throw new Error("BAKONG_ACCOUNT_ID មិនទាន់កំណត់ទេ — សូមកំណត់ក្នុង ការកំណត់");
+  if (!merchantName) throw new Error("MERCHANT_NAME មិនទាន់កំណត់ទេ — សូមកំណត់ក្នុង ការកំណត់");
 
   return { accountId, merchantName, merchantCity, acquiringBank };
 }

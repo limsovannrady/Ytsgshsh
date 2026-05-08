@@ -1,12 +1,13 @@
-import { Home, Package, History, Settings2, Code2 } from "lucide-react";
+import { Home, Package, History, Sliders, Code2, Settings } from "lucide-react";
 import type { TabId } from "@/App";
 
 const tabs: { id: TabId; icon: typeof Home; label: string }[] = [
-  { id: "home",    icon: Home,      label: "ទំព័រដើម" },
-  { id: "check",   icon: Package,   label: "ពិនិត្យ" },
-  { id: "history", icon: History,   label: "ប្រវត្តិ" },
-  { id: "pos",     icon: Settings2, label: "POS" },
-  { id: "docs",    icon: Code2,     label: "ឯកសារ" },
+  { id: "home",     icon: Home,     label: "ទំព័រដើម" },
+  { id: "check",    icon: Package,  label: "ពិនិត្យ" },
+  { id: "history",  icon: History,  label: "ប្រវត្តិ" },
+  { id: "pos",      icon: Sliders,  label: "POS" },
+  { id: "docs",     icon: Code2,    label: "ឯកសារ" },
+  { id: "settings", icon: Settings, label: "កំណត់" },
 ];
 
 interface Props { active: TabId; onChange: (t: TabId) => void; }
