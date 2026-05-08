@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bakong KHQR Payment API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: payment
+    description: Bakong KHQR Payment operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,108 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /payment/generate-qr:
+    post:
+      operationId: generateQr
+      tags: [payment]
+      summary: Generate KHQR QR code
+      description: Generate a Bakong KHQR QR code for a given amount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateQrBody"
+      responses:
+        "200":
+          description: QR code generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateQrResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/check/{md5}:
+    get:
+      operationId: checkPayment
+      tags: [payment]
+      summary: Check payment status
+      description: Check if a payment has been completed using the MD5 hash
+      parameters:
+        - name: md5
+          in: path
+          required: true
+          schema:
+            type: string
+          description: MD5 hash returned from generate-qr
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckPaymentResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/pos:
+    get:
+      operationId: getPosInfo
+      tags: [payment]
+      summary: Get POS information
+      description: Retrieve POS (Point of Sale) information from Bakong
+      responses:
+        "200":
+          description: POS information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosInfoResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/history:
+    get:
+      operationId: getPaymentHistory
+      tags: [payment]
+      summary: Get payment history
+      description: Get recent payment transactions
+      responses:
+        "200":
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentRecord"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +138,108 @@ components:
       required:
         - status
 
+    GenerateQrBody:
+      type: object
+      properties:
+        amount:
+          type: number
+          description: Payment amount in USD
+        currency:
+          type: string
+          description: Currency code (USD or KHR)
+          default: USD
+        description:
+          type: ["string", "null"]
+          description: Payment description
+      required:
+        - amount
+
+    GenerateQrResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        qr:
+          type: string
+          description: KHQR string to encode as QR
+        md5:
+          type: string
+          description: MD5 hash used to check payment status
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - status
+        - qr
+        - md5
+        - amount
+        - currency
+        - createdAt
+
+    CheckPaymentResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Payment status (paid or pending)
+        md5:
+          type: string
+        paid:
+          type: boolean
+        data:
+          type: ["object", "null"]
+      required:
+        - status
+        - md5
+        - paid
+
+    PosInfoResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: ["object", "null"]
+      required:
+        - status
+
+    PaymentRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        qr:
+          type: string
+        md5:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - qr
+        - md5
+        - amount
+        - currency
+        - status
+        - createdAt
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

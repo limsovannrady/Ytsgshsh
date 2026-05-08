@@ -5,7 +5,10 @@
  * Bakong KHQR Payment API
  * OpenAPI spec version: 0.1.0
  */
+import type { PosInfoResponseData } from "./posInfoResponseData";
 
-export interface HealthStatus {
+export interface PosInfoResponse {
   status: string;
+  /** @nullable */
+  data?: PosInfoResponseData;
 }
