@@ -9,7 +9,7 @@ import { desc, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const BAKONG_API = "https://bakong.nbc.gov.kh";
+const BAKONG_API = "https://bakong.cambo-kh.com";
 
 function getBakongToken(): string {
   const token = process.env["BAKONG_TOKEN"];
