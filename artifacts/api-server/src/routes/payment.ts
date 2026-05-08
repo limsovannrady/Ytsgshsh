@@ -1,17 +1,18 @@
 import { Router, type IRouter } from "express";
 import { db, paymentsTable } from "@workspace/db";
 import { GetPaymentHistoryResponse } from "@workspace/api-zod";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import { createRequire } from "module";
 import { getAllSettings } from "./settings.js";
+import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const require = createRequire(import.meta.url);
 const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
 
 const router: IRouter = Router();
 
-async function getMerchantConfig() {
-  const settings = await getAllSettings();
+async function getMerchantConfig(userId: string) {
+  const settings = await getAllSettings(userId);
 
   const accountId = settings["BAKONG_ACCOUNT_ID"] || process.env["BAKONG_ACCOUNT_ID"];
   const merchantName = settings["MERCHANT_NAME"] || process.env["MERCHANT_NAME"];
@@ -25,11 +26,12 @@ async function getMerchantConfig() {
 }
 
 async function generateQr(
+  userId: string,
   amount: number,
   currency: string,
   description?: string
 ): Promise<{ qr: string; md5: string }> {
-  const { accountId, merchantName, merchantCity, acquiringBank } = await getMerchantConfig();
+  const { accountId, merchantName, merchantCity, acquiringBank } = await getMerchantConfig(userId);
 
   const currencyCode = currency.toUpperCase() === "KHR"
     ? khqrData.currency.khr
@@ -58,9 +60,10 @@ async function generateQr(
 }
 
 async function checkPaymentStatus(
+  userId: string,
   md5: string
 ): Promise<{ paid: boolean; data: unknown }> {
-  const settings = await getAllSettings();
+  const settings = await getAllSettings(userId);
   const bakongToken = settings["BAKONG_TOKEN"] || process.env["BAKONG_TOKEN"];
 
   if (bakongToken) {
@@ -84,7 +87,6 @@ async function checkPaymentStatus(
     }
   }
 
-  // Fallback: check local DB only
   const [row] = await db
     .select({ status: paymentsTable.status })
     .from(paymentsTable)
@@ -94,8 +96,9 @@ async function checkPaymentStatus(
   return { paid: row?.status === "paid", data: null };
 }
 
-// ─── Unified public endpoint: /api/payment?type=...&... ──────────────────────
-router.all("/payment", async (req, res): Promise<void> => {
+// ─── Unified public endpoint: /api/payment?type=... ──────────────────────────
+router.all("/payment", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId;
   const type = (req.query["type"] as string | undefined)?.trim();
 
   if (!type) {
@@ -104,7 +107,6 @@ router.all("/payment", async (req, res): Promise<void> => {
   }
 
   try {
-    // ── generate_qr ──────────────────────────────────────────────────────────
     if (type === "generate_qr") {
       const rawAmount = req.query["amount"] ?? req.body?.amount;
       const currency = (req.query["currency"] ?? req.body?.currency ?? "USD") as string;
@@ -116,10 +118,10 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      const { qr, md5 } = await generateQr(amount, currency, description);
+      const { qr, md5 } = await generateQr(userId, amount, currency, description);
 
       await db.insert(paymentsTable).values({
-        qr, md5,
+        userId, qr, md5,
         amount: String(amount),
         currency,
         description: description ?? null,
@@ -130,7 +132,6 @@ router.all("/payment", async (req, res): Promise<void> => {
       return;
     }
 
-    // ── check_md5 ────────────────────────────────────────────────────────────
     if (type === "check_md5") {
       const md5 = (req.query["md5"] ?? req.body?.md5) as string | undefined;
       if (!md5) {
@@ -138,7 +139,7 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      const { paid, data } = await checkPaymentStatus(md5);
+      const { paid, data } = await checkPaymentStatus(userId, md5);
 
       if (paid) {
         await db.update(paymentsTable).set({ status: "paid" }).where(eq(paymentsTable.md5, md5));
@@ -148,10 +149,10 @@ router.all("/payment", async (req, res): Promise<void> => {
       return;
     }
 
-    // ── history ──────────────────────────────────────────────────────────────
     if (type === "history") {
       const records = await db
         .select().from(paymentsTable)
+        .where(eq(paymentsTable.userId, userId))
         .orderBy(desc(paymentsTable.createdAt)).limit(50);
 
       const result = GetPaymentHistoryResponse.parse(
@@ -174,8 +175,9 @@ router.all("/payment", async (req, res): Promise<void> => {
   }
 });
 
-// ─── Internal REST routes (used by the frontend hooks) ───────────────────────
-router.post("/payment/generate-qr", async (req, res): Promise<void> => {
+// ─── REST routes ─────────────────────────────────────────────────────────────
+router.post("/payment/generate-qr", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId;
   const { amount, currency = "USD", description } = req.body ?? {};
   const num = parseFloat(String(amount));
   if (!amount || isNaN(num) || num <= 0) {
@@ -183,9 +185,9 @@ router.post("/payment/generate-qr", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const { qr, md5 } = await generateQr(num, currency, description);
+    const { qr, md5 } = await generateQr(userId, num, currency, description);
     await db.insert(paymentsTable).values({
-      qr, md5, amount: String(num), currency,
+      userId, qr, md5, amount: String(num), currency,
       description: description ?? null, status: "pending",
     }).onConflictDoNothing();
     res.json({ status: "success", qr, md5, amount: num, currency, description: description ?? null, createdAt: new Date().toISOString() });
@@ -195,11 +197,12 @@ router.post("/payment/generate-qr", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/payment/check/:md5", async (req, res): Promise<void> => {
+router.get("/payment/check/:md5", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId;
   const raw = Array.isArray(req.params.md5) ? req.params.md5[0] : req.params.md5;
   if (!raw) { res.status(400).json({ error: "Missing md5" }); return; }
   try {
-    const { paid, data } = await checkPaymentStatus(raw);
+    const { paid, data } = await checkPaymentStatus(userId, raw);
     if (paid) {
       await db.update(paymentsTable).set({ status: "paid" }).where(eq(paymentsTable.md5, raw));
     }
@@ -210,9 +213,11 @@ router.get("/payment/check/:md5", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/payment/history", async (req, res): Promise<void> => {
+router.get("/payment/history", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId;
   try {
     const records = await db.select().from(paymentsTable)
+      .where(eq(paymentsTable.userId, userId))
       .orderBy(desc(paymentsTable.createdAt)).limit(50);
     const result = GetPaymentHistoryResponse.parse(
       records.map((r) => ({

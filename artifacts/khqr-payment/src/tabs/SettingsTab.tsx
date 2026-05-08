@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Loader2, Save, Eye, EyeOff } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGetSettings, useSaveSettings } from "@workspace/api-client-react";
+import { useClerk, useUser } from "@clerk/react";
 
 const FIELDS = [
   { key: "BAKONG_ACCOUNT_ID", label: "Bakong Account ID", placeholder: "yourname@devit", sensitive: false, hint: "Bakong account ID (ឧ: yourname@devit)" },
   { key: "MERCHANT_NAME", label: "ឈ្មោះអ្នក / ហាង", placeholder: "My Shop", sensitive: false, hint: "ឈ្មោះដែលបង្ហាញនៅលើ QR" },
   { key: "MERCHANT_CITY", label: "ក្រុង", placeholder: "Phnom Penh", sensitive: false, hint: "ក្រុង (ឧ: Phnom Penh, Siem Reap)" },
   { key: "ACQUIRING_BANK", label: "Acquiring Bank (optional)", placeholder: "ACLBKHPP", sensitive: false, hint: "Bank code — ទុកទំនេរប្រសិនបើមិនដឹង" },
-  { key: "BAKONG_TOKEN", label: "Bakong Token (rbk_...)", placeholder: "rbk_...", sensitive: true, hint: "Token សម្រាប់ verify payment តាម api-bakong.nbc.gov.kh" },
+  { key: "BAKONG_TOKEN", label: "Bakong Token (rbk_...)", placeholder: "rbk_...", sensitive: true, hint: "Token សម្រាប់ verify payment តាម BakongRelay" },
 ];
 
 export default function SettingsTab() {
   const { toast } = useToast();
+  const { signOut } = useClerk();
+  const { user } = useUser();
   const { data, isLoading } = useGetSettings();
   const saveSettings = useSaveSettings();
 
@@ -47,6 +50,35 @@ export default function SettingsTab() {
         </svg>
         <span className="text-sm font-semibold text-muted-foreground">ការកំណត់</span>
       </div>
+
+      {user && (
+        <div className="bg-card rounded-xl border p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {user.imageUrl ? (
+              <img src={user.imageUrl} alt="avatar" className="h-8 w-8 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold" style={{ background: "hsl(211,100%,42%)" }}>
+                {(user.firstName?.[0] ?? user.emailAddresses[0]?.emailAddress?.[0] ?? "U").toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {user.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : user.emailAddresses[0]?.emailAddress ?? "Merchant"}
+              </p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {user.emailAddresses[0]?.emailAddress}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="flex items-center gap-1.5 text-xs font-medium text-destructive shrink-0 px-2.5 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            ចេញ
+          </button>
+        </div>
+      )}
 
       <div className="bg-card rounded-xl border p-4 space-y-4">
         <p className="text-xs text-muted-foreground">
