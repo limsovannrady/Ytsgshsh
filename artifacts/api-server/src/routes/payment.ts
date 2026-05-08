@@ -83,13 +83,11 @@ router.get("/payment/check/:md5", async (req, res): Promise<void> => {
 
   try {
     const token = getBakongToken();
-    const response = await fetch(`${BAKONG_API}/api/payment?type=check_transaction`, {
-      method: "POST",
+    const response = await fetch(`${BAKONG_API}/api/payment?type=check_md5&md5=${encodeURIComponent(md5)}`, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ md5 }),
     });
 
     const data = await response.json() as { status?: string; data?: unknown };
