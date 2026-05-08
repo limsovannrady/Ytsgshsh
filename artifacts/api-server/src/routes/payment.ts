@@ -66,7 +66,7 @@ async function checkPaymentStatus(
   if (bakongToken) {
     try {
       const response = await fetch(
-        `https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5`,
+        `https://api.bakongrelay.com/v1/check_transaction_by_md5`,
         {
           method: "POST",
           headers: {
