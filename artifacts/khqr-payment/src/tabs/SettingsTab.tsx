@@ -8,7 +8,8 @@ const FIELDS = [
   { key: "MERCHANT_NAME", label: "ឈ្មោះអ្នក / ហាង", placeholder: "My Shop", sensitive: false, hint: "ឈ្មោះដែលបង្ហាញនៅលើ QR" },
   { key: "MERCHANT_CITY", label: "ក្រុង", placeholder: "Phnom Penh", sensitive: false, hint: "ក្រុង (ឧ: Phnom Penh, Siem Reap)" },
   { key: "ACQUIRING_BANK", label: "Acquiring Bank (optional)", placeholder: "ACLBKHPP", sensitive: false, hint: "Bank code — ទុកទំនេរប្រសិនបើមិនដឹង" },
-  { key: "BAKONG_TOKEN", label: "Bakong API Token (optional)", placeholder: "eyJ...", sensitive: true, hint: "Token សម្រាប់ confirm payment — optional" },
+  { key: "BAKONG_TOKEN", label: "Bakong Relay Token", placeholder: "rbk_...", sensitive: true, hint: "Token relay Bakong សម្រាប់ verify payment" },
+  { key: "USER_TG_ID", label: "Telegram User ID", placeholder: "5002402843", sensitive: false, hint: "User TG ID ដែលភ្ជាប់ជាមួយ relay token" },
 ];
 
 export default function SettingsTab() {
