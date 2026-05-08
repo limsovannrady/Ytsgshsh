@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useHashLocation } from "wouter";
 import { QrCode, Search, History, Building2, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location] = useHashLocation();
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");

@@ -1,42 +1,34 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Sidebar } from "@/components/sidebar";
-import GenerateQrPage from "@/pages/generate-qr";
-import CheckPaymentPage from "@/pages/check-payment";
-import HistoryPage from "@/pages/history";
-import PosPage from "@/pages/pos";
-import NotFound from "@/pages/not-found";
+import GenerateQrTab from "@/tabs/GenerateQrTab";
+import CheckPaymentTab from "@/tabs/CheckPaymentTab";
+import HistoryTab from "@/tabs/HistoryTab";
+import PosTab from "@/tabs/PosTab";
+import DocsTab from "@/tabs/DocsTab";
+import { BottomNav } from "@/components/BottomNav";
 
 const queryClient = new QueryClient();
 
-function Router() {
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
-          <Switch>
-            <Route path="/" component={GenerateQrPage} />
-            <Route path="/check" component={CheckPaymentPage} />
-            <Route path="/history" component={HistoryPage} />
-            <Route path="/pos" component={PosPage} />
-            <Route component={NotFound} />
-          </Switch>
-        </div>
-      </main>
-    </div>
-  );
-}
+export type TabId = "home" | "check" | "history" | "pos" | "docs";
 
 function App() {
+  const [tab, setTab] = useState<TabId>("home");
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
+        <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto relative">
+          <main className="flex-1 overflow-y-auto pb-20">
+            {tab === "home" && <GenerateQrTab />}
+            {tab === "check" && <CheckPaymentTab />}
+            {tab === "history" && <HistoryTab />}
+            {tab === "pos" && <PosTab />}
+            {tab === "docs" && <DocsTab />}
+          </main>
+          <BottomNav active={tab} onChange={setTab} />
+        </div>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
