@@ -183,7 +183,7 @@ router.post("/payment/generate-qr", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const { qr, md5 } = generateQr(num, currency, description);
+    const { qr, md5 } = await generateQr(num, currency, description);
     await db.insert(paymentsTable).values({
       qr, md5, amount: String(num), currency,
       description: description ?? null, status: "pending",
