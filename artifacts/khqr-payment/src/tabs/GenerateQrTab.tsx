@@ -53,10 +53,11 @@ export default function GenerateQrTab() {
           setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
           queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
         },
-        onError: () => {
-          const err = { status: "error", message: "Failed to generate QR. Check BAKONG_TOKEN." };
+        onError: (e: unknown) => {
+          const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
+          const err = { status: "error", message: msg };
           setResult(err);
-          toast({ title: "Error", description: err.message, variant: "destructive" });
+          toast({ title: "Error", description: msg, variant: "destructive" });
         },
       }
     );

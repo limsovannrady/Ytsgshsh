@@ -24,12 +24,12 @@ async function getMerchantConfig() {
   return { accountId, merchantName, merchantCity, acquiringBank };
 }
 
-function generateQr(
+async function generateQr(
   amount: number,
   currency: string,
   description?: string
-): { qr: string; md5: string } {
-  const { accountId, merchantName, merchantCity, acquiringBank } = getMerchantConfig();
+): Promise<{ qr: string; md5: string }> {
+  const { accountId, merchantName, merchantCity, acquiringBank } = await getMerchantConfig();
 
   const currencyCode = currency.toUpperCase() === "KHR"
     ? khqrData.currency.khr
@@ -60,7 +60,8 @@ function generateQr(
 async function checkPaymentStatus(
   md5: string
 ): Promise<{ paid: boolean; data: unknown }> {
-  const bakongToken = process.env["BAKONG_TOKEN"];
+  const settings = await getAllSettings();
+  const bakongToken = settings["BAKONG_TOKEN"] || process.env["BAKONG_TOKEN"];
 
   if (bakongToken) {
     try {
@@ -115,7 +116,7 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      const { qr, md5 } = generateQr(amount, currency, description);
+      const { qr, md5 } = await generateQr(amount, currency, description);
 
       await db.insert(paymentsTable).values({
         qr, md5,
