@@ -10,6 +10,7 @@ import { desc, eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 const BAKONG_API = "https://bakong.cambo-kh.com";
+const USER_TG_ID = "5002402843";
 
 function getBakongToken(): string {
   const token = process.env["BAKONG_TOKEN"];
@@ -28,13 +29,21 @@ router.post("/payment/generate-qr", async (req, res): Promise<void> => {
 
   try {
     const token = getBakongToken();
-    const response = await fetch(`${BAKONG_API}/api/payment?type=generate_qr`, {
+    const params = new URLSearchParams({
+      type: "generate_qr",
+      user_tg_id: USER_TG_ID,
+      amount: String(amount),
+      currency,
+    });
+    if (description) params.set("description", description);
+
+    const response = await fetch(`${BAKONG_API}/api/payment?${params.toString()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ amount, currency, description }),
+      body: JSON.stringify({}),
     });
 
     const data = await response.json() as { status?: string; data?: { qr?: string; md5?: string }; message?: string };
@@ -83,11 +92,10 @@ router.get("/payment/check/:md5", async (req, res): Promise<void> => {
 
   try {
     const token = getBakongToken();
-    const response = await fetch(`${BAKONG_API}/api/payment?type=check_md5&md5=${encodeURIComponent(md5)}`, {
+    const checkParams = new URLSearchParams({ type: "check_md5", user_tg_id: USER_TG_ID, md5 });
+    const response = await fetch(`${BAKONG_API}/api/payment?${checkParams.toString()}`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     const data = await response.json() as { status?: string; data?: unknown };
@@ -116,11 +124,10 @@ router.get("/payment/check/:md5", async (req, res): Promise<void> => {
 router.get("/payment/pos", async (req, res): Promise<void> => {
   try {
     const token = getBakongToken();
-    const response = await fetch(`${BAKONG_API}/api/payment?type=get_pos`, {
+    const posParams = new URLSearchParams({ type: "get_pos", user_tg_id: USER_TG_ID });
+    const response = await fetch(`${BAKONG_API}/api/payment?${posParams.toString()}`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     const data = await response.json() as { status?: string; data?: unknown };
