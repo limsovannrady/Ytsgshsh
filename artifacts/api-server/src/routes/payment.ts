@@ -2,57 +2,93 @@ import { Router, type IRouter } from "express";
 import { db, paymentsTable } from "@workspace/db";
 import { GetPaymentHistoryResponse } from "@workspace/api-zod";
 import { desc, eq } from "drizzle-orm";
+import { createRequire } from "module";
+import crypto from "crypto";
+
+const require = createRequire(import.meta.url);
+const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
 
 const router: IRouter = Router();
 
-const BAKONG_API = "https://bakong.cambo-kh.com";
-const USER_TG_ID = "5002402843";
+function getMerchantConfig() {
+  const accountId = process.env["BAKONG_ACCOUNT_ID"];
+  const merchantName = process.env["MERCHANT_NAME"];
+  const merchantCity = process.env["MERCHANT_CITY"] || "Phnom Penh";
+  const acquiringBank = process.env["ACQUIRING_BANK"] || "";
 
-function getBakongToken(): string {
-  const token = process.env["BAKONG_TOKEN"];
-  if (!token) throw new Error("BAKONG_TOKEN is not set");
-  return token;
+  if (!accountId) throw new Error("BAKONG_ACCOUNT_ID is not set");
+  if (!merchantName) throw new Error("MERCHANT_NAME is not set");
+
+  return { accountId, merchantName, merchantCity, acquiringBank };
 }
 
-async function generateQr(
+function generateQr(
   amount: number,
   currency: string,
-  description: string | undefined,
-  token: string
-): Promise<{ qr: string; md5: string }> {
-  const params = new URLSearchParams({
-    type: "generate_qr",
-    user_tg_id: USER_TG_ID,
-    amount: String(amount),
-    currency,
-  });
-  if (description) params.set("description", description);
+  description?: string
+): { qr: string; md5: string } {
+  const { accountId, merchantName, merchantCity, acquiringBank } = getMerchantConfig();
 
-  const response = await fetch(`${BAKONG_API}/api/payment?${params.toString()}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({}),
-  });
+  const currencyCode = currency.toUpperCase() === "KHR"
+    ? khqrData.currency.khr
+    : khqrData.currency.usd;
 
-  const data = await response.json() as { status?: string; data?: { qr?: string; md5?: string }; message?: string };
-  if (data.status !== "success" || !data.data?.qr || !data.data?.md5) {
-    throw Object.assign(new Error(data.message ?? "Failed to generate QR"), { bakongData: data });
+  const expiry = Date.now() + 15 * 60 * 1000;
+
+  const optional: Record<string, unknown> = {
+    currency: currencyCode,
+    amount,
+    expirationTimestamp: String(expiry),
+  };
+  if (acquiringBank) optional.acquiringBank = acquiringBank;
+  if (description) optional.purposeOfTransaction = description.slice(0, 25);
+
+  const info = new IndividualInfo(accountId, merchantName, merchantCity, optional);
+
+  const bakong = new BakongKHQR();
+  const result = bakong.generateIndividual(info);
+
+  if (result.status?.code !== 0 || !result.data?.qr) {
+    throw new Error(result.status?.message ?? "Failed to generate KHQR");
   }
-  return { qr: data.data.qr, md5: data.data.md5 };
+
+  return { qr: result.data.qr, md5: result.data.md5 };
 }
 
-async function checkMd5(
-  md5: string,
-  token: string
+async function checkPaymentStatus(
+  md5: string
 ): Promise<{ paid: boolean; data: unknown }> {
-  const params = new URLSearchParams({ type: "check_md5", user_tg_id: USER_TG_ID, md5 });
-  const response = await fetch(`${BAKONG_API}/api/payment?${params.toString()}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await response.json() as { status?: string; data?: unknown };
-  const paid = data.status === "success" && data.data != null;
-  return { paid, data: data.data ?? null };
+  const bakongToken = process.env["BAKONG_TOKEN"];
+
+  if (bakongToken) {
+    try {
+      const response = await fetch(
+        `https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${bakongToken}`,
+          },
+          body: JSON.stringify({ md5 }),
+        }
+      );
+      const data = await response.json() as { responseCode?: number; data?: unknown };
+      const paid = data.responseCode === 0 && data.data != null;
+      return { paid, data: data.data ?? null };
+    } catch {
+      // fall through to DB check
+    }
+  }
+
+  // Fallback: check local DB only
+  const [row] = await db
+    .select({ status: paymentsTable.status })
+    .from(paymentsTable)
+    .where(eq(paymentsTable.md5, md5))
+    .limit(1);
+
+  return { paid: row?.status === "paid", data: null };
 }
 
 // ─── Unified public endpoint: /api/payment?type=...&... ──────────────────────
@@ -65,8 +101,6 @@ router.all("/payment", async (req, res): Promise<void> => {
   }
 
   try {
-    const token = getBakongToken();
-
     // ── generate_qr ──────────────────────────────────────────────────────────
     if (type === "generate_qr") {
       const rawAmount = req.query["amount"] ?? req.body?.amount;
@@ -79,7 +113,7 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      const { qr, md5 } = await generateQr(amount, currency, description, token);
+      const { qr, md5 } = generateQr(amount, currency, description);
 
       await db.insert(paymentsTable).values({
         qr, md5,
@@ -101,25 +135,13 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      const { paid, data } = await checkMd5(md5, token);
+      const { paid, data } = await checkPaymentStatus(md5);
 
       if (paid) {
         await db.update(paymentsTable).set({ status: "paid" }).where(eq(paymentsTable.md5, md5));
       }
 
       res.json({ status: paid ? "success" : "pending", paid, data, md5 });
-      return;
-    }
-
-    // ── get_pos ──────────────────────────────────────────────────────────────
-    if (type === "get_pos") {
-      const params = new URLSearchParams({ type: "get_pos", user_tg_id: USER_TG_ID });
-      const response = await fetch(`${BAKONG_API}/api/payment?${params.toString()}`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json() as { status?: string; data?: unknown };
-      res.json(data);
       return;
     }
 
@@ -145,7 +167,7 @@ router.all("/payment", async (req, res): Promise<void> => {
     res.status(400).json({ status: "error", message: "Invalid type parameter" });
   } catch (err) {
     req.log.error({ err }, "Payment route error");
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({ status: "error", message: (err as Error).message ?? "Internal server error" });
   }
 });
 
@@ -158,8 +180,7 @@ router.post("/payment/generate-qr", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const token = getBakongToken();
-    const { qr, md5 } = await generateQr(num, currency, description, token);
+    const { qr, md5 } = generateQr(num, currency, description);
     await db.insert(paymentsTable).values({
       qr, md5, amount: String(num), currency,
       description: description ?? null, status: "pending",
@@ -175,30 +196,13 @@ router.get("/payment/check/:md5", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.md5) ? req.params.md5[0] : req.params.md5;
   if (!raw) { res.status(400).json({ error: "Missing md5" }); return; }
   try {
-    const token = getBakongToken();
-    const { paid, data } = await checkMd5(raw, token);
+    const { paid, data } = await checkPaymentStatus(raw);
     if (paid) {
       await db.update(paymentsTable).set({ status: "paid" }).where(eq(paymentsTable.md5, raw));
     }
     res.json({ status: paid ? "paid" : "pending", md5: raw, paid, data });
   } catch (err) {
     req.log.error({ err }, "Error checking payment");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.get("/payment/pos", async (req, res): Promise<void> => {
-  try {
-    const token = getBakongToken();
-    const params = new URLSearchParams({ type: "get_pos", user_tg_id: USER_TG_ID });
-    const response = await fetch(`${BAKONG_API}/api/payment?${params.toString()}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json() as { status?: string; data?: unknown };
-    res.json({ status: data.status ?? "success", data: data.data ?? null });
-  } catch (err) {
-    req.log.error({ err }, "Error fetching POS info");
     res.status(500).json({ error: "Internal server error" });
   }
 });
