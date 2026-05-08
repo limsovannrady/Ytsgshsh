@@ -10,7 +10,6 @@ const ALLOWED_KEYS = [
   "MERCHANT_CITY",
   "ACQUIRING_BANK",
   "BAKONG_TOKEN",
-  "USER_TG_ID",
 ];
 
 async function getAllSettings(): Promise<Record<string, string>> {

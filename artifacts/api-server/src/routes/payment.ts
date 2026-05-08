@@ -62,20 +62,22 @@ async function checkPaymentStatus(
 ): Promise<{ paid: boolean; data: unknown }> {
   const settings = await getAllSettings();
   const bakongToken = settings["BAKONG_TOKEN"] || process.env["BAKONG_TOKEN"];
-  const userTgId = settings["USER_TG_ID"] || process.env["USER_TG_ID"];
 
-  if (bakongToken && userTgId) {
+  if (bakongToken) {
     try {
-      const params = new URLSearchParams({ type: "check_md5", user_tg_id: userTgId, md5 });
       const response = await fetch(
-        `https://bakong.cambo-kh.com/api/payment?${params.toString()}`,
+        `https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5`,
         {
-          method: "GET",
-          headers: { Authorization: `Bearer ${bakongToken}` },
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${bakongToken}`,
+          },
+          body: JSON.stringify({ md5 }),
         }
       );
-      const data = await response.json() as { status?: string; data?: unknown };
-      const paid = data.status === "success" && data.data != null;
+      const data = await response.json() as { responseCode?: number; data?: unknown };
+      const paid = data.responseCode === 0 && data.data != null;
       return { paid, data: data.data ?? null };
     } catch {
       // fall through to DB check
