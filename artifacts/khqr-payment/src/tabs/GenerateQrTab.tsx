@@ -77,7 +77,7 @@ export default function GenerateQrTab() {
       {/* API Info Card */}
       <ApiCard
         method="POST"
-        endpoint="/api/payment/generate-qr"
+        endpoint={`/api/payment?type=generate_qr&user_tg_id=5002402843&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}${description ? `&description=${encodeURIComponent(description)}` : ""}`}
         title="បង្កើតកូដ KHQR (Generate)"
       />
 

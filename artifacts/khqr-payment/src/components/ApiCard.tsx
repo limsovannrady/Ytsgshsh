@@ -13,6 +13,8 @@ export function ApiCard({ method, endpoint, title, description, baseUrl }: Props
   const [copied, setCopied] = useState(false);
   const fullUrl = (baseUrl ?? window.location.origin) + endpoint;
 
+  const pathOnly = endpoint.split("?")[0];
+
   const copy = () => {
     navigator.clipboard.writeText(fullUrl);
     setCopied(true);
@@ -21,14 +23,14 @@ export function ApiCard({ method, endpoint, title, description, baseUrl }: Props
 
   return (
     <div className="bg-card rounded-xl border p-4 space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span
-          className="text-xs font-bold px-2.5 py-1 rounded-md text-white"
+          className="text-xs font-bold px-2.5 py-1 rounded-md text-white shrink-0"
           style={{ background: method === "POST" ? "#3b82f6" : "#10b981" }}
         >
           {method}
         </span>
-        <code className="text-sm font-mono text-foreground">{endpoint}</code>
+        <code className="text-sm font-mono text-foreground">{pathOnly}</code>
       </div>
 
       <div className="flex items-center gap-2">
@@ -45,9 +47,9 @@ export function ApiCard({ method, endpoint, title, description, baseUrl }: Props
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
 
-      <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
-        <code className="text-xs font-mono text-foreground flex-1 truncate">{fullUrl}</code>
-        <button onClick={copy} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+      <div className="flex items-start gap-2 bg-muted rounded-lg px-3 py-2">
+        <code className="text-xs font-mono text-foreground flex-1 break-all">{fullUrl}</code>
+        <button onClick={copy} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5">
           {copied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>

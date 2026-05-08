@@ -48,7 +48,7 @@ export default function CheckPaymentTab() {
 
       <ApiCard
         method="GET"
-        endpoint="/api/payment/check/{md5}"
+        endpoint={`/api/payment?type=check_md5&user_tg_id=5002402843&md5=${md5Input.trim() || "YOUR_MD5_HERE"}`}
         title="ពិនិត្យការទូទាត់ (Check MD5)"
       />
 
