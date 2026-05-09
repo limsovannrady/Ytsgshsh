@@ -15,7 +15,7 @@ export default function GenerateQrTab() {
 
   // ── Logo from settings ─────────────────────────────────────────────────────
   const { data: settings } = useGetSettings();
-  const uploadedLogo = settings?.find((s) => s.key === "LOGO_DATA")?.value ?? null;
+  const uploadedLogo = settings?.["LOGO_DATA"] ?? null;
   const logoSrc = uploadedLogo || BAKONG_LOGO;
 
   // ── Generate QR state ──────────────────────────────────────────────────────
