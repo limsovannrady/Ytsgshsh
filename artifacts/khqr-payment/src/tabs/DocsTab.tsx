@@ -102,7 +102,6 @@ export default function DocsTab() {
         { key: "user_tg_id", desc: USER_TG_ID, required: true },
         { key: "amount", desc: "ទឹកប្រាក់ (ឧ. 0.01, 1.50)", required: true },
         { key: "currency", desc: "USD ឬ KHR (default: USD)", required: false },
-        { key: "description", desc: "កំណត់ចំណាំ", required: false },
       ],
       response: `{\n  "status": "success",\n  "data": {\n    "qr": "00020101...",\n    "md5": "715de...",\n    "amount": 0.01,\n    "currency": "USD"\n  }\n}`,
     },

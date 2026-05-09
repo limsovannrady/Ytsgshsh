@@ -12,7 +12,6 @@ interface PaymentRecord {
   md5: string;
   amount: number;
   currency: string;
-  description: string | null;
   status: string;
   createdAt: string;
 }
@@ -91,9 +90,6 @@ export default function HistoryPage() {
                       <span className="font-medium text-foreground">
                         {record.currency} {Number(record.amount).toFixed(2)}
                       </span>
-                      {record.description && (
-                        <span className="text-sm text-muted-foreground truncate">— {record.description}</span>
-                      )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <code className="text-xs font-mono text-muted-foreground truncate max-w-[200px]">{record.md5}</code>

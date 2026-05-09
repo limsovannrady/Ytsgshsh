@@ -28,7 +28,6 @@ export default function GenerateQrTab() {
 
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
-  const [description, setDescription] = useState("");
   const [generateResult, setGenerateResult] = useState<unknown>(null);
   const [qrData, setQrData] = useState<{ qr: string; md5: string; amount: number; currency: string } | null>(null);
   const [paid, setPaid] = useState(false);
@@ -64,7 +63,6 @@ export default function GenerateQrTab() {
     try {
       const userId = getTelegramUserId();
       const params = new URLSearchParams({ type: "generate_qr", user_tg_id: userId, amount: String(num), currency });
-      if (description) params.set("description", description);
 
       const res = await fetch(`${window.location.origin}/api/payment?${params.toString()}`);
       const json = await res.json() as {
@@ -112,7 +110,7 @@ export default function GenerateQrTab() {
   const handleCheckKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleCheck(); };
 
   const userId = getTelegramUserId();
-  const generateEndpoint = `/api/payment?type=generate_qr&user_tg_id=${userId}&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}${description ? `&description=${encodeURIComponent(description)}` : ""}`;
+  const generateEndpoint = `/api/payment?type=generate_qr&user_tg_id=${userId}&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}`;
   const checkEndpoint = `/api/payment?type=check_md5&user_tg_id=${userId}&md5=${md5Input.trim() || "YOUR_MD5"}`;
 
   return (
@@ -155,17 +153,6 @@ export default function GenerateQrTab() {
               <option value="KHR">KHR</option>
             </select>
           </div>
-
-          {/* Description */}
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="កំណត់ចំណាំ (optional)"
-            className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
-            style={KH}
-            data-testid="input-description"
-          />
 
           {/* Generate Button */}
           <button

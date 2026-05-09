@@ -27,7 +27,6 @@ function getTelegramUserId(): string {
 const schema = z.object({
   amount: z.coerce.number().positive("Amount must be positive"),
   currency: z.enum(["USD", "KHR"]),
-  description: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -42,7 +41,7 @@ export default function GenerateQrPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { amount: 0.01, currency: "USD", description: "" },
+    defaultValues: { amount: 0.01, currency: "USD" },
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -79,8 +78,6 @@ export default function GenerateQrPage() {
         amount: String(values.amount),
         currency: values.currency,
       });
-      if (values.description) params.set("description", values.description);
-
       const res = await fetch(`${window.location.origin}/api/payment?${params.toString()}`);
       const json = await res.json() as { status: string; data?: { qr: string; md5: string; amount: number; currency: string }; message?: string };
 
@@ -169,19 +166,6 @@ export default function GenerateQrPage() {
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description <span className="text-muted-foreground">(optional)</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Order #1234" data-testid="input-description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <Button
                 type="submit"
                 className="w-full"

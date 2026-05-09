@@ -24,8 +24,6 @@ export default function PayPage() {
   const userTgId = params.get("user_tg_id") ?? "";
   const amount = params.get("amount") ?? "";
   const currency = (params.get("currency") ?? "USD").toUpperCase();
-  const description = params.get("description") ?? "";
-
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [paid, setPaid] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -43,7 +41,6 @@ export default function PayPage() {
       setError(null);
       try {
         const p = new URLSearchParams({ type: "generate_qr", user_tg_id: userTgId, amount, currency });
-        if (description) p.set("description", description);
         const res = await fetch(`${window.location.origin}/api/payment?${p}`);
         const json = await res.json() as { status: string; data?: QrData; message?: string };
         if (!res.ok || json.status !== "success" || !json.data) throw new Error(json.message ?? "Failed to generate QR");
@@ -56,7 +53,7 @@ export default function PayPage() {
     };
 
     generate();
-  }, [userTgId, amount, currency, description]);
+  }, [userTgId, amount, currency]);
 
   useEffect(() => {
     if (!qrData?.md5 || paid) return;
@@ -79,7 +76,6 @@ export default function PayPage() {
         <div className="flex flex-col items-center mb-6">
           <img src={BAKONG_LOGO} alt="Bakong" className="h-10 mb-3 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           <h1 className="text-white text-lg font-bold">Bakong KHQR Payment</h1>
-          {description && <p className="text-slate-400 text-sm mt-1">{description}</p>}
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
