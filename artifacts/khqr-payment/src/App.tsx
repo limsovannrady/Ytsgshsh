@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,8 +7,6 @@ import CheckPaymentTab from "@/tabs/CheckPaymentTab";
 import HistoryTab from "@/tabs/HistoryTab";
 import SettingsTab from "@/tabs/SettingsTab";
 import { BottomNav } from "@/components/BottomNav";
-import { TelegramContext, type TelegramUser } from "./TelegramContext";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
@@ -30,26 +28,13 @@ function Dashboard() {
 }
 
 function App() {
-  const [tgUser, setTgUser] = useState<TelegramUser | null>(null);
-
-  useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (tg?.initDataUnsafe?.user) {
-      const user = tg.initDataUnsafe.user as TelegramUser;
-      setTgUser(user);
-      setAuthTokenGetter(() => String(user.id));
-    }
-  }, []);
-
   return (
-    <TelegramContext.Provider value={tgUser}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Dashboard />
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </TelegramContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Dashboard />
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
