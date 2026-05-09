@@ -1,15 +1,22 @@
 import { useState } from "react";
 import { Loader2, Play, CheckCircle2, Clock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useGenerateQr, useCheckPayment, getCheckPaymentQueryKey, customFetch } from "@workspace/api-client-react";
+import { useGenerateQr, useCheckPayment, getCheckPaymentQueryKey, customFetch, useGetSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiCard } from "@/components/ApiCard";
 import { JsonViewer } from "@/components/JsonViewer";
 import { useToast } from "@/hooks/use-toast";
 
+const BAKONG_LOGO = "https://bakong.nbc.gov.kh/images/logo.png";
+
 export default function GenerateQrTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── Logo from settings ─────────────────────────────────────────────────────
+  const { data: settings } = useGetSettings();
+  const uploadedLogo = settings?.find((s) => s.key === "LOGO_DATA")?.value ?? null;
+  const logoSrc = uploadedLogo || BAKONG_LOGO;
 
   // ── Generate QR state ──────────────────────────────────────────────────────
   const [amount, setAmount] = useState("");
@@ -156,7 +163,18 @@ export default function GenerateQrTab() {
         <div className="bg-card rounded-xl border p-4 flex flex-col items-center gap-3">
           <div className="relative">
             <div className={`p-3 bg-white rounded-xl shadow transition-opacity ${paid ? "opacity-40" : ""}`}>
-              <QRCodeSVG value={qrData.qr} size={180} level="M" data-testid="img-qrcode" />
+              <QRCodeSVG
+                value={qrData.qr}
+                size={180}
+                level="M"
+                data-testid="img-qrcode"
+                imageSettings={{
+                  src: logoSrc,
+                  height: 38,
+                  width: 38,
+                  excavate: true,
+                }}
+              />
             </div>
             {paid && (
               <div className="absolute inset-0 flex items-center justify-center">
