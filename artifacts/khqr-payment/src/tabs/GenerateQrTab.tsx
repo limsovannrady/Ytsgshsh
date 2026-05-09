@@ -1,11 +1,21 @@
 import { useState } from "react";
 import { Loader2, Play, CheckCircle2, Clock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useGenerateQr, useCheckPayment, getCheckPaymentQueryKey, customFetch, useGetSettings } from "@workspace/api-client-react";
+import { useCheckPayment, getCheckPaymentQueryKey, customFetch, useGetSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiCard } from "@/components/ApiCard";
 import { JsonViewer } from "@/components/JsonViewer";
 import { useToast } from "@/hooks/use-toast";
+
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number } } } };
+  }
+}
+
+function getTelegramUserId(): string {
+  return String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id ?? "guest");
+}
 
 const BAKONG_LOGO = "https://bakong.nbc.gov.kh/images/logo.png";
 
@@ -16,7 +26,6 @@ export default function GenerateQrTab() {
   // ── Logo from settings ─────────────────────────────────────────────────────
   const { data: settings } = useGetSettings();
   const uploadedLogo = settings?.["LOGO_DATA"] ?? null;
-  const logoSrc = uploadedLogo || BAKONG_LOGO;
 
   // ── Generate QR state ──────────────────────────────────────────────────────
   const [amount, setAmount] = useState("");
@@ -25,8 +34,7 @@ export default function GenerateQrTab() {
   const [generateResult, setGenerateResult] = useState<unknown>(null);
   const [qrData, setQrData] = useState<{ qr: string; md5: string; amount: number; currency: string } | null>(null);
   const [paid, setPaid] = useState(false);
-
-  const generateQr = useGenerateQr();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useCheckPayment(
     qrData?.md5 ?? "",
@@ -46,7 +54,7 @@ export default function GenerateQrTab() {
     }
   );
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0) {
       toast({ title: "សូមបញ្ចូលទឹកប្រាក់", variant: "destructive" });
@@ -54,21 +62,35 @@ export default function GenerateQrTab() {
     }
     setPaid(false);
     setQrData(null);
-    generateQr.mutate(
-      { data: { amount: num, currency, description: description || undefined } },
-      {
-        onSuccess: (data) => {
-          setGenerateResult(data);
-          setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
-          queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
-        },
-        onError: (e: unknown) => {
-          const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
-          setGenerateResult({ status: "error", message: msg });
-          toast({ title: "Error", description: msg, variant: "destructive" });
-        },
+    setIsGenerating(true);
+    try {
+      const userId = getTelegramUserId();
+      const params = new URLSearchParams({
+        type: "generate_qr",
+        user_tg_id: userId,
+        amount: String(num),
+        currency,
+      });
+      if (description) params.set("description", description);
+
+      const res = await fetch(`${window.location.origin}/api/payment?${params.toString()}`);
+      const json = await res.json() as { status: string; data?: { qr: string; md5: string; amount: number; currency: string }; message?: string };
+
+      if (!res.ok || json.status !== "success" || !json.data) {
+        throw new Error(json.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់");
       }
-    );
+
+      const data = json.data;
+      setGenerateResult(json);
+      setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
+      queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
+      setGenerateResult({ status: "error", message: msg });
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // ── Check MD5 state ────────────────────────────────────────────────────────
@@ -103,15 +125,19 @@ export default function GenerateQrTab() {
         <span className="text-sm font-semibold text-muted-foreground">ឯកសារ API</span>
       </div>
 
-      {/* ── POST: Generate QR ── */}
-      <ApiCard method="POST" endpoint="/api/payment/generate-qr" title="បង្កើតកូដ KHQR (Generate)" />
+      {/* ── GET: Generate QR ── */}
+      <ApiCard
+        method="GET"
+        endpoint={`/api/payment?type=generate_qr&user_tg_id=${getTelegramUserId()}&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}${description ? `&description=${encodeURIComponent(description)}` : ""}`}
+        title="បង្កើតកូដ KHQR (Generate)"
+      />
 
       <div className="bg-card rounded-xl border p-4 space-y-3">
         <div className="flex items-center gap-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-primary">
             <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
           </svg>
-          <span className="text-sm font-semibold text-primary">សាកល្បង POST</span>
+          <span className="text-sm font-semibold text-primary">សាកល្បង GET</span>
         </div>
 
         <div className="flex gap-2">
@@ -145,12 +171,12 @@ export default function GenerateQrTab() {
 
         <button
           onClick={handleGenerate}
-          disabled={generateQr.isPending}
+          disabled={isGenerating}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
           style={{ background: "hsl(var(--primary))" }}
           data-testid="button-generate"
         >
-          {generateQr.isPending ? (
+          {isGenerating ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងបង្កើត...</>
           ) : (
             <><Play className="h-4 w-4 fill-white" /> ចេញ API</>
