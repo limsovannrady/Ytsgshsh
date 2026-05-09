@@ -5,6 +5,7 @@ import { desc, eq, and } from "drizzle-orm";
 import { createRequire } from "module";
 import { getAllSettings } from "./settings.js";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import QRCodeLib from "qrcode";
 
 const require = createRequire(import.meta.url);
 const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
@@ -118,7 +119,8 @@ router.all("/payment", async (req, res): Promise<void> => {
   // ── Browser redirect: show PayPage instead of JSON ──────────────────────────
   const acceptsHtml = (req.headers["accept"] ?? "").includes("text/html");
   const isBrowserRequest = acceptsHtml && !req.headers["x-requested-with"];
-  if (isBrowserRequest && type === "generate_qr" && tgIdFromQuery) {
+  const wantsPng = type === "qr_image" || String(req.query["format"] ?? "") === "png";
+  if (isBrowserRequest && !wantsPng && type === "generate_qr" && tgIdFromQuery) {
     const fwd = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
     const proto = req.headers["x-forwarded-proto"] ?? "https";
     const origin = fwd ? `${proto}://${fwd}` : `http://localhost:${process.env["PORT"] ?? 8080}`;
@@ -174,7 +176,59 @@ router.all("/payment", async (req, res): Promise<void> => {
         status: "pending",
       }).onConflictDoNothing();
 
+      // ── PNG image response ────────────────────────────────────────────────
+      if (wantsPng) {
+        const pngBuffer = await QRCodeLib.toBuffer(qr, {
+          type: "png",
+          width: 400,
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+          errorCorrectionLevel: "M",
+        });
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Content-Disposition", `inline; filename="khqr-${md5.slice(0, 8)}.png"`);
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.send(pngBuffer);
+        return;
+      }
+
       res.json({ status: "success", data: { qr, md5, amount, currency } });
+      return;
+    }
+
+    // ── type=qr_image: generate + return PNG directly ─────────────────────
+    if (type === "qr_image") {
+      const rawAmount = req.query["amount"] ?? req.body?.amount;
+      const currency = (req.query["currency"] ?? req.body?.currency ?? "USD") as string;
+      const description = (req.query["description"] ?? req.body?.description) as string | undefined;
+
+      const amount = parseFloat(String(rawAmount));
+      if (!rawAmount || isNaN(amount) || amount <= 0) {
+        res.status(400).json({ status: "error", message: "Invalid amount" });
+        return;
+      }
+
+      const { qr, md5 } = await generateQr(userId, amount, currency, description);
+
+      await db.insert(paymentsTable).values({
+        userId, qr, md5,
+        amount: String(amount),
+        currency,
+        description: description ?? null,
+        status: "pending",
+      }).onConflictDoNothing();
+
+      const pngBuffer = await QRCodeLib.toBuffer(qr, {
+        type: "png",
+        width: 400,
+        margin: 2,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: "M",
+      });
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Disposition", `inline; filename="khqr-${md5.slice(0, 8)}.png"`);
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.send(pngBuffer);
       return;
     }
 
