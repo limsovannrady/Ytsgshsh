@@ -67,6 +67,40 @@
   --radius: 0.75rem;
 }
 
+/* ─── Telegram dark mode ─────────────────────────────────────── */
+.dark {
+  --background: 220 18% 10%;
+  --foreground: 220 10% 90%;
+  --border: 220 18% 18%;
+  --card: 220 18% 14%;
+  --card-foreground: 220 10% 90%;
+  --popover: 220 18% 14%;
+  --popover-foreground: 220 10% 90%;
+  --primary: 211 100% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 18% 18%;
+  --secondary-foreground: 220 10% 80%;
+  --muted: 220 18% 16%;
+  --muted-foreground: 220 10% 52%;
+  --accent: 211 100% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 18% 20%;
+  --ring: 211 100% 55%;
+  --nav-bg: 220 18% 12%;
+  --nav-border: 220 18% 18%;
+  --nav-active: 211 100% 62%;
+  --nav-inactive: 220 10% 48%;
+  --json-bg: 220 25% 8%;
+}
+
+/* ─── Telegram viewport & safe-area foundation ──────────────── */
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 @layer base {
   * { @apply border-border box-border; }
   body { @apply font-sans antialiased bg-background text-foreground; }

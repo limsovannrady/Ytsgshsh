@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ApiCard } from "@/components/ApiCard";
 import { JsonViewer } from "@/components/JsonViewer";
 import { useToast } from "@/hooks/use-toast";
+import { tgHaptic } from "@/lib/tg";
 
 declare global {
   interface Window {
@@ -44,6 +45,7 @@ export default function GenerateQrTab() {
       onSuccess: (data: any) => {
         if (data?.paid) {
           setPaid(true);
+          tgHaptic.success();
           toast({ title: "បានទូទាត់ហើយ!", description: "ការទូទាត់ត្រូវបានបញ្ជាក់។" });
         }
       },
@@ -53,9 +55,11 @@ export default function GenerateQrTab() {
   const handleGenerate = async () => {
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0) {
+      tgHaptic.warning();
       toast({ title: "សូមបញ្ចូលទឹកប្រាក់", variant: "destructive" });
       return;
     }
+    tgHaptic.impact("medium");
     setPaid(false);
     setQrData(null);
     setPngUrl(null);
@@ -83,6 +87,7 @@ export default function GenerateQrTab() {
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
       setGenerateResult({ status: "error", message: msg });
+      tgHaptic.error();
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setIsGenerating(false);
@@ -96,6 +101,7 @@ export default function GenerateQrTab() {
   const handleCheck = async () => {
     const md5 = md5Input.trim();
     if (!md5) return;
+    tgHaptic.impact("light");
     setCheckLoading(true);
     setCheckResult(null);
     await queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(md5) });

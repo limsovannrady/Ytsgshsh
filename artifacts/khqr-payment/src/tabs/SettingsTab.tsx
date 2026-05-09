@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Loader2, Save, Eye, EyeOff, Copy, Check, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { tgHaptic } from "@/lib/tg";
 import { useGetSettings, useSaveSettings } from "@workspace/api-client-react";
 import { useTelegramUser } from "@/TelegramContext";
 import QRCode from "react-qr-code";
@@ -199,6 +200,7 @@ export default function SettingsTab() {
   };
 
   const handleSave = () => {
+    tgHaptic.impact("medium");
     saveSettings.mutate(
       { data: values },
       {

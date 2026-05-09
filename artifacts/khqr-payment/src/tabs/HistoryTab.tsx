@@ -3,13 +3,17 @@ import { useGetPaymentHistory, getGetPaymentHistoryQueryKey } from "@workspace/a
 import { useQueryClient } from "@tanstack/react-query";
 import { JsonViewer } from "@/components/JsonViewer";
 import { useState } from "react";
+import { tgHaptic } from "@/lib/tg";
 
 export default function HistoryTab() {
   const queryClient = useQueryClient();
   const [showJson, setShowJson] = useState(false);
   const { data, isLoading, isFetching } = useGetPaymentHistory();
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: getGetPaymentHistoryQueryKey() });
+  const refresh = () => {
+    tgHaptic.impact("light");
+    queryClient.invalidateQueries({ queryKey: getGetPaymentHistoryQueryKey() });
+  };
 
   return (
     <div className="p-4 space-y-4">

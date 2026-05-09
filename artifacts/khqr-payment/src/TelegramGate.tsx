@@ -16,15 +16,54 @@ declare global {
             language_code?: string;
           };
         };
+        colorScheme?: "light" | "dark";
+        themeParams?: Record<string, string>;
+        isExpanded?: boolean;
+        viewportHeight?: number;
+        viewportStableHeight?: number;
         ready: () => void;
         expand: () => void;
+        close?: () => void;
+        setHeaderColor?: (color: string) => void;
+        setBackgroundColor?: (color: string) => void;
+        setBottomBarColor?: (color: string) => void;
+        disableVerticalSwipes?: () => void;
+        enableVerticalSwipes?: () => void;
+        enableClosingConfirmation?: () => void;
+        disableClosingConfirmation?: () => void;
+        HapticFeedback?: {
+          impactOccurred(style: "light" | "medium" | "heavy" | "rigid" | "soft"): void;
+          notificationOccurred(type: "error" | "success" | "warning"): void;
+          selectionChanged(): void;
+        };
+        MainButton?: {
+          text: string;
+          color: string;
+          textColor: string;
+          isVisible: boolean;
+          isActive: boolean;
+          isProgressVisible: boolean;
+          setText(text: string): void;
+          onClick(cb: () => void): void;
+          offClick(cb: () => void): void;
+          show(): void;
+          hide(): void;
+          enable(): void;
+          disable(): void;
+        };
+        BackButton?: {
+          isVisible: boolean;
+          onClick(cb: () => void): void;
+          offClick(cb: () => void): void;
+          show(): void;
+          hide(): void;
+        };
       };
     };
   }
 }
 
 // ── Synchronous check: runs before any React renders ──────────────────────────
-// window.Telegram is set by the <script> tag before our bundle loads.
 const tgWebApp = window.Telegram?.WebApp;
 const tgUser: TelegramUser | null = tgWebApp?.initDataUnsafe?.user ?? null;
 const isInTelegram = !!tgWebApp && !!(tgWebApp.initData || tgUser);
@@ -32,6 +71,22 @@ const isInTelegram = !!tgWebApp && !!(tgWebApp.initData || tgUser);
 if (isInTelegram) {
   tgWebApp!.ready();
   tgWebApp!.expand();
+
+  // Native header & background color — matches Telegram's secondary bg
+  tgWebApp!.setHeaderColor?.("secondary_bg_color");
+  tgWebApp!.setBackgroundColor?.("secondary_bg_color");
+  tgWebApp!.setBottomBarColor?.("secondary_bg_color");
+
+  // Prevent accidental swipe-down close
+  tgWebApp!.disableVerticalSwipes?.();
+
+  // Apply Telegram color scheme (dark / light) to the document
+  const scheme = tgWebApp!.colorScheme ?? "light";
+  if (scheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
 
   // Set auth token synchronously — guaranteed to be set before any
   // React Query hook fires its first request.
