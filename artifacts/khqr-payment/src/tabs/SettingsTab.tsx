@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Loader2, Save, Eye, EyeOff, LogOut } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGetSettings, useSaveSettings } from "@workspace/api-client-react";
-import { useClerk, useUser } from "@clerk/react";
+import { useTelegramUser } from "@/TelegramContext";
 
 const FIELDS = [
   { key: "BAKONG_ACCOUNT_ID", label: "Bakong Account ID", placeholder: "yourname@devit", sensitive: false, hint: "Bakong account ID (ឧ: yourname@devit)" },
@@ -14,8 +14,7 @@ const FIELDS = [
 
 export default function SettingsTab() {
   const { toast } = useToast();
-  const { signOut } = useClerk();
-  const { user } = useUser();
+  const tgUser = useTelegramUser();
   const { data, isLoading } = useGetSettings();
   const saveSettings = useSaveSettings();
 
@@ -42,6 +41,10 @@ export default function SettingsTab() {
     );
   };
 
+  const displayName = tgUser
+    ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ")
+    : "Telegram User";
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-2 pt-2 pb-1">
@@ -51,32 +54,27 @@ export default function SettingsTab() {
         <span className="text-sm font-semibold text-muted-foreground">ការកំណត់</span>
       </div>
 
-      {user && (
-        <div className="bg-card rounded-xl border p-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {user.imageUrl ? (
-              <img src={user.imageUrl} alt="avatar" className="h-8 w-8 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold" style={{ background: "hsl(211,100%,42%)" }}>
-                {(user.firstName?.[0] ?? user.emailAddresses[0]?.emailAddress?.[0] ?? "U").toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {user.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : user.emailAddresses[0]?.emailAddress ?? "Merchant"}
-              </p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {user.emailAddresses[0]?.emailAddress}
-              </p>
+      {tgUser && (
+        <div className="bg-card rounded-xl border p-3 flex items-center gap-3">
+          {tgUser.photo_url ? (
+            <img src={tgUser.photo_url} alt="avatar" className="h-9 w-9 rounded-full object-cover shrink-0" />
+          ) : (
+            <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold" style={{ background: "hsl(211,100%,42%)" }}>
+              {displayName[0]?.toUpperCase() ?? "T"}
             </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+            {tgUser.username && (
+              <p className="text-[11px] text-muted-foreground truncate">@{tgUser.username}</p>
+            )}
           </div>
-          <button
-            onClick={() => signOut()}
-            className="flex items-center gap-1.5 text-xs font-medium text-destructive shrink-0 px-2.5 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            ចេញ
-          </button>
+          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-lg">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-[#27A7E5]">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.93c-.12.57-.46.71-.93.44l-2.57-1.89-1.24 1.19c-.14.14-.25.25-.51.25l.18-2.6 4.72-4.26c.2-.18-.05-.28-.32-.1L7.4 14.53 4.87 13.7c-.56-.17-.57-.56.12-.83l9.07-3.49c.47-.17.88.12.72.83l-.14-.51z"/>
+            </svg>
+            Telegram
+          </div>
         </div>
       )}
 

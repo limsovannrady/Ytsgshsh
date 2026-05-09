@@ -1,4 +1,3 @@
-import { getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
 
 export interface AuthedRequest extends Request {
@@ -6,12 +5,18 @@ export interface AuthedRequest extends Request {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const auth = getAuth(req);
-  const userId = (auth?.sessionClaims?.["userId"] as string | undefined) || auth?.userId;
+  const authHeader = req.headers["authorization"];
+  const userIdHeader = req.headers["x-telegram-user-id"];
+
+  const userId =
+    (typeof userIdHeader === "string" && userIdHeader.trim()) ||
+    (authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null);
+
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+
   (req as AuthedRequest).userId = userId;
   next();
 }
