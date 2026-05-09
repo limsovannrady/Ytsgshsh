@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -45,11 +45,11 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=21416 BASE_PATH=/ pnpm --filter @workspace/khqr-payment run dev"
-waitForPort = 21416
+args = "PORT=5000 BASE_PATH=/ pnpm --filter @workspace/khqr-payment run dev"
+waitForPort = 5000
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
@@ -57,12 +57,12 @@ path = "scripts/post-merge.sh"
 timeoutMs = 20000
 
 [[ports]]
-localPort = 8080
-externalPort = 8080
+localPort = 5000
+externalPort = 5000
 
 [[ports]]
-localPort = 8081
-externalPort = 80
+localPort = 8080
+externalPort = 8080
 
 [[ports]]
 localPort = 8082
@@ -86,4 +86,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-NEON_DATABASE_URL = "postgresql://neondb_owner:npg_CUg3fWZNM9rc@ep-ancient-feather-a16d9z6v-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
