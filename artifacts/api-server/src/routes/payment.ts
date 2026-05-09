@@ -192,7 +192,12 @@ router.all("/payment", async (req, res): Promise<void> => {
         return;
       }
 
-      res.json({ status: "success", data: { qr, md5, amount, currency } });
+      const host = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
+      const proto = req.headers["x-forwarded-proto"] ?? "https";
+      const origin = host ? `${proto}://${host}` : `http://localhost:${process.env["PORT"] ?? 8080}`;
+      const url_qr_code = `${origin}/api/img/${md5}.png`;
+
+      res.json({ status: "success", data: { qr, md5, amount, currency, url_qr_code } });
       return;
     }
 
