@@ -1,19 +1,39 @@
 import { format } from "date-fns";
 import { CheckCircle2, Clock, RefreshCw } from "lucide-react";
-import { useGetPaymentHistory, getGetPaymentHistoryQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function HistoryPage() {
-  const queryClient = useQueryClient();
-  const { data: records, isLoading, isFetching } = useGetPaymentHistory();
+interface PaymentRecord {
+  id: number;
+  qr: string;
+  md5: string;
+  amount: number;
+  currency: string;
+  description: string | null;
+  status: string;
+  createdAt: string;
+}
 
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: getGetPaymentHistoryQueryKey() });
-  };
+const HISTORY_KEY = ["payment-history-all"];
+
+async function fetchAllHistory(): Promise<PaymentRecord[]> {
+  const res = await fetch(`${window.location.origin}/api/payment?type=history&user_tg_id=_`);
+  const json = await res.json() as { status: string; data?: PaymentRecord[] };
+  if (json.status === "success" && json.data) return json.data;
+  return [];
+}
+
+export default function HistoryPage() {
+  const { data: records, isLoading, isFetching, refetch } = useQuery({
+    queryKey: HISTORY_KEY,
+    queryFn: fetchAllHistory,
+    refetchInterval: 5000,
+  });
+
+  const refresh = () => { refetch(); };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

@@ -183,7 +183,6 @@ router.all("/payment", async (req, res): Promise<void> => {
     if (type === "history") {
       const records = await db
         .select().from(paymentsTable)
-        .where(eq(paymentsTable.userId, userId))
         .orderBy(desc(paymentsTable.createdAt)).limit(50);
 
       const result = GetPaymentHistoryResponse.parse(
@@ -244,11 +243,9 @@ router.get("/payment/check/:md5", requireAuth, async (req, res): Promise<void> =
   }
 });
 
-router.get("/payment/history", requireAuth, async (req, res): Promise<void> => {
-  const userId = (req as AuthedRequest).userId;
+router.get("/payment/history", async (req, res): Promise<void> => {
   try {
     const records = await db.select().from(paymentsTable)
-      .where(eq(paymentsTable.userId, userId))
       .orderBy(desc(paymentsTable.createdAt)).limit(50);
     const result = GetPaymentHistoryResponse.parse(
       records.map((r) => ({
