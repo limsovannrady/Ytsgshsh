@@ -163,18 +163,26 @@ export default function GenerateQrTab() {
         <div className="bg-card rounded-xl border p-4 flex flex-col items-center gap-3">
           <div className="relative">
             <div className={`p-3 bg-white rounded-xl shadow transition-opacity ${paid ? "opacity-40" : ""}`}>
-              <QRCodeSVG
-                value={qrData.qr}
-                size={180}
-                level="M"
-                data-testid="img-qrcode"
-                imageSettings={{
-                  src: logoSrc,
-                  height: 38,
-                  width: 38,
-                  excavate: true,
-                }}
-              />
+              <div className="relative inline-block">
+                <QRCodeSVG
+                  value={qrData.qr}
+                  size={180}
+                  level="M"
+                  data-testid="img-qrcode"
+                />
+                <img
+                  src={logoSrc}
+                  alt="logo"
+                  className="absolute rounded-full object-cover border-2 border-white shadow"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                />
+              </div>
             </div>
             {paid && (
               <div className="absolute inset-0 flex items-center justify-center">
