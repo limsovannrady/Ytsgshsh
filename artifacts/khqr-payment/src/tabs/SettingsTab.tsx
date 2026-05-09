@@ -3,6 +3,7 @@ import { Loader2, Save, Eye, EyeOff, Copy, Check, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGetSettings, useSaveSettings } from "@workspace/api-client-react";
 import { useTelegramUser } from "@/TelegramContext";
+import QRCode from "react-qr-code";
 
 const FIELDS = [
   {
@@ -42,10 +43,110 @@ const FIELDS = [
 
 function getLogoDisplayName(logoData: string): string {
   if (!logoData) return "";
-  if (logoData.startsWith("data:")) {
-    return "logo_uploaded.jpg";
-  }
+  if (logoData.startsWith("data:")) return "logo_uploaded.jpg";
   return logoData.slice(0, 28) + "...";
+}
+
+/* ─── KHQR Preview Card ──────────────────────────────────────────────────── */
+function KhqrPreviewCard({
+  merchantName,
+  accountId,
+  logo,
+}: {
+  merchantName: string;
+  accountId: string;
+  logo: string | null;
+}) {
+  const sampleQr = accountId
+    ? `00020101021229${accountId}5204000053031165802KH5925${(merchantName || "MERCHANT").slice(0, 25).padEnd(25)}6010PHNOM PENH6304ABCD`
+    : "BAKONG_KHQR_SAMPLE";
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden shadow-xl"
+      style={{ fontFamily: "'Kantumruy Pro', sans-serif", background: "linear-gradient(145deg, #0a1628 0%, #0d2044 60%, #0a3060 100%)" }}
+    >
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="white" className="h-4 w-4">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-white/50 text-[9px] font-medium uppercase tracking-widest">Bakong KHQR</p>
+            <p className="text-white text-xs font-semibold" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
+              {merchantName || "ឈ្មោះហាង"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-white/40 text-[9px] uppercase tracking-wider">NBC Certified</p>
+          <div className="flex items-center gap-1 justify-end mt-0.5">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="text-emerald-400 text-[9px] font-medium">Active</span>
+          </div>
+        </div>
+      </div>
+
+      {/* QR area */}
+      <div className="flex flex-col items-center px-5 py-4 gap-3">
+        <div className="relative bg-white rounded-2xl p-3 shadow-2xl">
+          <QRCode value={sampleQr} size={160} level="M" />
+          {/* Center logo overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="h-10 w-10 rounded-full bg-white shadow-md border-2 border-white overflow-hidden flex items-center justify-center">
+              {logo ? (
+                <img src={logo} alt="logo" className="h-full w-full object-cover" />
+              ) : (
+                <img
+                  src="https://bakong.nbc.gov.kh/images/logo.png"
+                  alt="Bakong"
+                  className="h-8 w-8 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Account info */}
+        <div className="text-center space-y-0.5">
+          <p
+            className="text-white font-semibold text-sm"
+            style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}
+          >
+            {merchantName || "ឈ្មោះអ្នកទទួល"}
+          </p>
+          <p className="text-white/50 text-[11px] font-mono">
+            {accountId || "yourname@bank"}
+          </p>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mx-5 border-t border-white/10" />
+
+      {/* Footer instruction */}
+      <div className="px-5 py-3 flex items-center justify-between">
+        <p
+          className="text-white/40 text-[10px] leading-tight"
+          style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}
+        >
+          ស្កេន QR ដោយប្រើ<br />Bakong / Banking App
+        </p>
+        <div className="flex items-center gap-1.5">
+          <div className="h-5 w-5 rounded bg-white/10 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="white" className="h-3 w-3" opacity={0.6}>
+              <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm13 1h2v2h-2zm0 4h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm0-4h2v2h-2zm-2-2h2v2h-2z"/>
+            </svg>
+          </div>
+          <span className="text-white/30 text-[9px] uppercase tracking-wider">Secured by NBC</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SettingsTab() {
@@ -112,7 +213,7 @@ export default function SettingsTab() {
     : "Telegram User";
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
 
       {/* ─── Profile Card ─── */}
       <div className="bg-card rounded-2xl border shadow-sm p-5 flex flex-col items-center gap-3">
@@ -124,12 +225,12 @@ export default function SettingsTab() {
           </div>
         )}
         <div className="text-center space-y-1">
-          <p className="text-lg font-bold text-foreground">{displayName}</p>
+          <p className="text-lg font-bold text-foreground" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>{displayName}</p>
           <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.93c-.12.57-.46.71-.93.44l-2.57-1.89-1.24 1.19c-.14.14-.25.25-.51.25l.18-2.6 4.72-4.26c.2-.18-.05-.28-.32-.1L7.4 14.53 4.87 13.7c-.56-.17-.57-.56.12-.83l9.07-3.49c.47-.17.88.12.72.83l-.14-.51z"/>
             </svg>
-            អ្នកប្រើប្រាស់ទូទៅ
+            <span style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>អ្នកប្រើប្រាស់ទូទៅ</span>
           </span>
         </div>
         {tgUser && (
@@ -146,89 +247,105 @@ export default function SettingsTab() {
         )}
       </div>
 
+      {/* ─── KHQR Preview ─── */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground px-1 flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01"/>
+          </svg>
+          គំរូ KHQR របស់អ្នក
+        </p>
+        <KhqrPreviewCard
+          merchantName={values["MERCHANT_NAME"] ?? ""}
+          accountId={values["BAKONG_ACCOUNT_ID"] ?? ""}
+          logo={logoPreview}
+        />
+      </div>
+
       {/* ─── Settings Form ─── */}
       <div className="bg-card rounded-2xl border shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b bg-blue-50/60">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-blue-600">
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
           </svg>
-          <span className="text-sm font-semibold text-blue-600">ការកំណត់គណនីរបស់អ្នក</span>
+          <span className="text-sm font-semibold text-blue-600" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>ការកំណត់គណនីរបស់អ្នក</span>
         </div>
 
         <div className="p-4 space-y-4">
 
-            {/* Regular fields */}
-            {FIELDS.map((f) => (
-              <div key={f.key} className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <span className="text-muted-foreground/70">{f.icon}</span>
-                  {f.label}
-                </label>
-                <div className="relative">
-                  <input
-                    type={f.sensitive && !shown[f.key] ? "password" : "text"}
-                    value={values[f.key] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                    placeholder={f.placeholder}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-shadow"
-                  />
-                  {f.sensitive && (
-                    <button
-                      type="button"
-                      onClick={() => setShown((s) => ({ ...s, [f.key]: !s[f.key] }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {shown[f.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Logo upload field */}
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-muted-foreground/70">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                </svg>
-                រូបភណ្ឌ (Logo សម្រាប់ QR)
+          {FIELDS.map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
+                <span className="text-muted-foreground/70">{f.icon}</span>
+                {f.label}
               </label>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-between bg-background border border-border rounded-xl px-4 py-3 text-sm hover:bg-muted/50 transition-colors"
-              >
-                <span className="text-muted-foreground font-mono text-xs truncate max-w-[80%]">
-                  {values["LOGO_DATA"]
-                    ? getLogoDisplayName(values["LOGO_DATA"])
-                    : "ជ្រើសរើសរូបភាព..."}
-                </span>
-                <span className="flex items-center gap-1.5 text-primary shrink-0">
-                  {logoPreview ? (
-                    <img src={logoPreview} alt="logo" className="h-6 w-6 rounded object-cover" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                </span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleLogoUpload}
-              />
-              <p className="text-[10px] text-muted-foreground">រូបភាព PNG/JPG — អតិបរិមា 500KB</p>
+              <div className="relative">
+                <input
+                  type={f.sensitive && !shown[f.key] ? "password" : "text"}
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-shadow"
+                  style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}
+                />
+                {f.sensitive && (
+                  <button
+                    type="button"
+                    onClick={() => setShown((s) => ({ ...s, [f.key]: !s[f.key] }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {shown[f.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                )}
+              </div>
             </div>
+          ))}
 
+          {/* Logo upload field */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-muted-foreground/70">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+              </svg>
+              រូបភណ្ឌ (Logo សម្រាប់ QR)
+            </label>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-between bg-background border border-border rounded-xl px-4 py-3 text-sm hover:bg-muted/50 transition-colors"
+            >
+              <span className="text-muted-foreground font-mono text-xs truncate max-w-[80%]">
+                {values["LOGO_DATA"]
+                  ? getLogoDisplayName(values["LOGO_DATA"])
+                  : "ជ្រើសរើសរូបភាព..."}
+              </span>
+              <span className="flex items-center gap-1.5 text-primary shrink-0">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="logo" className="h-6 w-6 rounded object-cover" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+              </span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+            <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>រូបភាព PNG/JPG — អតិបរិមា 500KB</p>
           </div>
+
+        </div>
 
         <div className="px-4 pb-4">
           <button
             onClick={handleSave}
             disabled={saveSettings.isPending}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60 shadow-sm"
-            style={{ background: "hsl(211, 100%, 42%)" }}
+            style={{ background: "hsl(211, 100%, 42%)", fontFamily: "'Kantumruy Pro', sans-serif" }}
           >
             {saveSettings.isPending ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងរក្សាទុក...</>
