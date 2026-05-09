@@ -12,7 +12,6 @@ interface Props {
 export function ApiCard({ method, endpoint, title, description, baseUrl }: Props) {
   const [copied, setCopied] = useState(false);
   const fullUrl = (baseUrl ?? window.location.origin) + endpoint;
-
   const pathOnly = endpoint.split("?")[0];
 
   const copy = () => {
@@ -21,36 +20,49 @@ export function ApiCard({ method, endpoint, title, description, baseUrl }: Props
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const methodColor = method === "POST" ? "#2563eb" : "#16a34a";
+
   return (
-    <div className="bg-card rounded-xl border p-4 space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+      {/* Method + Path */}
+      <div className="space-y-1">
         <span
-          className="text-xs font-bold px-2.5 py-1 rounded-md text-white shrink-0"
-          style={{ background: method === "POST" ? "#3b82f6" : "#10b981" }}
+          className="inline-block text-xs font-bold px-3 py-1 rounded-lg text-white tracking-wide"
+          style={{ background: methodColor, fontFamily: "'Kantumruy Pro', sans-serif" }}
         >
           {method}
         </span>
-        <code className="text-sm font-mono text-foreground">{pathOnly}</code>
+        <p className="font-mono text-sm text-gray-800 break-all">{pathOnly}</p>
       </div>
 
+      {/* Title */}
       <div className="flex items-center gap-2">
-        <div className="h-5 w-5 rounded flex items-center justify-center shrink-0"
-          style={{ background: "hsl(var(--primary))" }}>
-          <svg viewBox="0 0 24 24" className="h-3 w-3 fill-white">
-            <path d="M3 11h8V3H3m0 18h8v-8H3m10 8h8v-8h-8m0-10v8h8V3"/>
-          </svg>
-        </div>
-        <span className="text-sm font-medium text-foreground">{title}</span>
+        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke={methodColor} strokeWidth={2}>
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01"/>
+        </svg>
+        <span
+          className="text-sm font-medium text-gray-500"
+          style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}
+        >
+          {title}
+        </span>
       </div>
 
       {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-gray-400" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>{description}</p>
       )}
 
-      <div className="flex items-start gap-2 bg-muted rounded-lg px-3 py-2">
-        <code className="text-xs font-mono text-foreground flex-1 break-all">{fullUrl}</code>
-        <button onClick={copy} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-          {copied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+      {/* URL Copy Row */}
+      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+        <code className="text-xs font-mono text-gray-600 flex-1 break-all leading-relaxed">{fullUrl}</code>
+        <button
+          onClick={copy}
+          className="shrink-0 p-1.5 rounded-lg bg-white border border-gray-200 hover:border-blue-300 transition-colors text-gray-400 hover:text-blue-500 shadow-sm"
+        >
+          {copied
+            ? <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+            : <Copy className="h-3.5 w-3.5" />}
         </button>
       </div>
     </div>

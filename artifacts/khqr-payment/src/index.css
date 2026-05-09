@@ -62,7 +62,7 @@
   --json-key: 199 89% 70%;
   --json-bool: 280 65% 75%;
 
-  --app-font-sans: 'Inter', system-ui, sans-serif;
+  --app-font-sans: 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
   --app-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
   --radius: 0.75rem;
 }

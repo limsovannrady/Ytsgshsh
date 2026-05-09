@@ -17,17 +17,15 @@ function getTelegramUserId(): string {
   return String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id ?? "guest");
 }
 
-const BAKONG_LOGO = "https://bakong.nbc.gov.kh/images/logo.png";
+const KH = { fontFamily: "'Kantumruy Pro', sans-serif" };
 
 export default function GenerateQrTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── Logo from settings ─────────────────────────────────────────────────────
   const { data: settings } = useGetSettings();
   const uploadedLogo = settings?.["LOGO_DATA"] ?? null;
 
-  // ── Generate QR state ──────────────────────────────────────────────────────
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [description, setDescription] = useState("");
@@ -36,26 +34,22 @@ export default function GenerateQrTab() {
   const [paid, setPaid] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedPng, setCopiedPng] = useState(false);
-
-  useCheckPayment(
-    qrData?.md5 ?? "",
-    {
-      query: {
-        enabled: !!qrData?.md5 && !paid,
-        queryKey: getCheckPaymentQueryKey(qrData?.md5 ?? ""),
-        refetchInterval: 3000,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onSuccess: (data: any) => {
-          if (data?.paid) {
-            setPaid(true);
-            toast({ title: "បានទូទាត់ហើយ!", description: "ការទូទាត់ត្រូវបានបញ្ជាក់។" });
-          }
-        },
-      },
-    }
-  );
-
   const [pngUrl, setPngUrl] = useState<string | null>(null);
+
+  useCheckPayment(qrData?.md5 ?? "", {
+    query: {
+      enabled: !!qrData?.md5 && !paid,
+      queryKey: getCheckPaymentQueryKey(qrData?.md5 ?? ""),
+      refetchInterval: 3000,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onSuccess: (data: any) => {
+        if (data?.paid) {
+          setPaid(true);
+          toast({ title: "បានទូទាត់ហើយ!", description: "ការទូទាត់ត្រូវបានបញ្ជាក់។" });
+        }
+      },
+    },
+  });
 
   const handleGenerate = async () => {
     const num = parseFloat(amount);
@@ -69,16 +63,15 @@ export default function GenerateQrTab() {
     setIsGenerating(true);
     try {
       const userId = getTelegramUserId();
-      const params = new URLSearchParams({
-        type: "generate_qr",
-        user_tg_id: userId,
-        amount: String(num),
-        currency,
-      });
+      const params = new URLSearchParams({ type: "generate_qr", user_tg_id: userId, amount: String(num), currency });
       if (description) params.set("description", description);
 
       const res = await fetch(`${window.location.origin}/api/payment?${params.toString()}`);
-      const json = await res.json() as { status: string; data?: { qr: string; md5: string; amount: number; currency: string }; message?: string };
+      const json = await res.json() as {
+        status: string;
+        data?: { qr: string; md5: string; amount: number; currency: string; url_qr_code?: string };
+        message?: string;
+      };
 
       if (!res.ok || json.status !== "success" || !json.data) {
         throw new Error(json.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់");
@@ -88,16 +81,7 @@ export default function GenerateQrTab() {
       setGenerateResult(json);
       setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
       queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
-
-      // ── build PNG URL ──────────────────────────────────────────────────────
-      const pngParams = new URLSearchParams({
-        type: "qr_image",
-        user_tg_id: userId,
-        amount: String(num),
-        currency,
-      });
-      if (description) pngParams.set("description", description);
-      setPngUrl(`${window.location.origin}/api/payment?${pngParams.toString()}`);
+      if (data.url_qr_code) setPngUrl(data.url_qr_code);
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
       setGenerateResult({ status: "error", message: msg });
@@ -107,7 +91,6 @@ export default function GenerateQrTab() {
     }
   };
 
-  // ── Check MD5 state ────────────────────────────────────────────────────────
   const [md5Input, setMd5Input] = useState("");
   const [checkLoading, setCheckLoading] = useState(false);
   const [checkResult, setCheckResult] = useState<unknown>(null);
@@ -128,100 +111,90 @@ export default function GenerateQrTab() {
 
   const handleCheckKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleCheck(); };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const userId = getTelegramUserId();
+  const generateEndpoint = `/api/payment?type=generate_qr&user_tg_id=${userId}&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}${description ? `&description=${encodeURIComponent(description)}` : ""}`;
+  const checkEndpoint = `/api/payment?type=check_md5&user_tg_id=${userId}&md5=${md5Input.trim() || "YOUR_MD5"}`;
+
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 pt-2 pb-1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5 text-muted-foreground">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-        </svg>
-        <span className="text-sm font-semibold text-muted-foreground">ឯកសារ API</span>
-      </div>
+    <div className="p-4 space-y-4" style={KH}>
 
-      {/* ── GET: Generate QR ── */}
-      <ApiCard
-        method="GET"
-        endpoint={`/api/payment?type=generate_qr&user_tg_id=${getTelegramUserId()}&amount=${amount || "0.01"}${currency !== "USD" ? `&currency=${currency}` : ""}${description ? `&description=${encodeURIComponent(description)}` : ""}`}
-        title="បង្កើតកូដ KHQR (Generate)"
-      />
+      {/* ══════════════════════════════════════════
+          SECTION 1 — Generate QR
+      ══════════════════════════════════════════ */}
+      <ApiCard method="GET" endpoint={generateEndpoint} title="បង្កើតកូដ KHQR (Generate)" />
 
-      <div className="bg-card rounded-xl border p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-primary">
-            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      {/* Lab test card */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={2} className="h-4 w-4 shrink-0">
+            <path d="M9 3v11l-4 5h14l-4-5V3"/><path d="M6 3h12"/>
           </svg>
-          <span className="text-sm font-semibold text-primary">សាកល្បង GET</span>
+          <span className="text-sm font-semibold text-blue-600" style={KH}>សាកល្បងផ្ទាល់</span>
         </div>
 
-        <div className="flex gap-2">
+        <div className="p-4 space-y-3">
+          {/* Amount + Currency row */}
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="ទឹកប្រាក់ (Ex: 0.01)"
+              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-shadow"
+              style={KH}
+              data-testid="input-amount"
+            />
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
+              style={KH}
+            >
+              <option value="USD">USD</option>
+              <option value="KHR">KHR</option>
+            </select>
+          </div>
+
+          {/* Description */}
           <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="ទឹកប្រាក់ (Ex: 0.01)"
-            className="flex-1 bg-muted border border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            data-testid="input-amount"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="កំណត់ចំណាំ (optional)"
+            className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
+            style={KH}
+            data-testid="input-description"
           />
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="bg-muted border border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            data-testid="select-currency"
+
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60 shadow-sm hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "#2563eb", ...KH }}
+            data-testid="button-generate"
           >
-            <option value="USD">USD</option>
-            <option value="KHR">KHR</option>
-          </select>
+            {isGenerating
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងបង្កើត...</>
+              : <><Play className="h-4 w-4 fill-white" /> ចេញ API</>}
+          </button>
         </div>
-
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="កំណត់ចំណាំ (optional)"
-          className="w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-          data-testid="input-description"
-        />
-
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-          style={{ background: "hsl(var(--primary))" }}
-          data-testid="button-generate"
-        >
-          {isGenerating ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងបង្កើត...</>
-          ) : (
-            <><Play className="h-4 w-4 fill-white" /> ចេញ API</>
-          )}
-        </button>
       </div>
 
       {/* QR Code display */}
       {qrData && (
-        <div className="bg-card rounded-xl border p-4 flex flex-col items-center gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center gap-4">
           <div className="relative">
-            <div className={`p-3 bg-white rounded-xl shadow transition-opacity ${paid ? "opacity-40" : ""}`}>
+            <div className={`p-3 bg-white rounded-xl border border-gray-100 shadow-sm transition-opacity ${paid ? "opacity-40" : ""}`}>
               <div className="relative inline-block">
-                <QRCodeSVG
-                  value={qrData.qr}
-                  size={180}
-                  level="M"
-                  data-testid="img-qrcode"
-                />
+                <QRCodeSVG value={qrData.qr} size={180} level="M" data-testid="img-qrcode" />
                 {uploadedLogo && (
                   <img
                     src={uploadedLogo}
                     alt="logo"
                     className="absolute rounded-full object-cover border-2 border-white shadow"
-                    style={{
-                      width: 40,
-                      height: 40,
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                    }}
+                    style={{ width: 40, height: 40, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
                   />
                 )}
               </div>
@@ -232,66 +205,54 @@ export default function GenerateQrTab() {
               </div>
             )}
           </div>
-          <div className="text-center">
-            <p className="font-bold text-lg">{qrData.currency} {Number(qrData.amount).toFixed(2)}</p>
+          <div className="text-center space-y-1">
+            <p className="font-bold text-xl text-gray-800" style={KH}>
+              {qrData.currency} {Number(qrData.amount).toFixed(2)}
+            </p>
             {paid ? (
-              <p className="text-sm text-green-600 font-medium">បានទូទាត់រួចរាល់</p>
+              <p className="text-sm text-green-600 font-semibold" style={KH}>បានទូទាត់រួចរាល់ ✓</p>
             ) : (
-              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 animate-pulse text-primary" />
+              <div className="flex items-center justify-center gap-1.5 text-sm text-gray-400" style={KH}>
+                <Clock className="h-3.5 w-3.5 animate-pulse text-blue-500" />
                 <span>រង់ចាំការទូទាត់...</span>
               </div>
             )}
           </div>
-          <div className="w-full bg-muted rounded-lg px-3 py-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">MD5</p>
-            <code className="text-xs font-mono break-all" data-testid="text-md5">{qrData.md5}</code>
+          <div className="w-full bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100">
+            <p className="text-[10px] text-gray-400 mb-0.5 font-medium uppercase tracking-wider">MD5</p>
+            <code className="text-xs font-mono text-gray-600 break-all" data-testid="text-md5">{qrData.md5}</code>
           </div>
         </div>
       )}
 
-      {/* ── PNG URL Card ── */}
+      {/* PNG URL Card */}
       {pngUrl && (
-        <div className="bg-card rounded-xl border overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b" style={{ background: "linear-gradient(90deg,#0d2044,#0a3060)" }}>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div
+            className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10"
+            style={{ background: "linear-gradient(90deg,#0d2044,#1e40af)" }}
+          >
             <ImageDown className="h-3.5 w-3.5 text-white/70" />
-            <span className="text-xs font-semibold text-white/90" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
-              URL រូបភាព QR Code (PNG)
-            </span>
+            <span className="text-xs font-semibold text-white" style={KH}>URL រូបភាព QR Code (PNG)</span>
           </div>
-          <div className="p-3 space-y-2">
-            {/* Preview */}
+          <div className="p-3 space-y-2.5">
             <div className="flex justify-center">
-              <img
-                src={pngUrl}
-                alt="QR PNG preview"
-                className="h-28 w-28 rounded-lg border shadow-sm object-contain bg-white"
-              />
+              <img src={pngUrl} alt="QR PNG" className="h-28 w-28 rounded-xl border border-gray-100 shadow-sm bg-white object-contain" />
             </div>
-            {/* URL row */}
-            <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
-              <code className="flex-1 text-[10px] font-mono text-muted-foreground break-all leading-relaxed">
-                {pngUrl}
-              </code>
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+              <code className="flex-1 text-[10px] font-mono text-gray-500 break-all leading-relaxed">{pngUrl}</code>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(pngUrl).then(() => {
-                    setCopiedPng(true);
-                    setTimeout(() => setCopiedPng(false), 2000);
-                  });
-                }}
-                className="shrink-0 p-1.5 rounded-lg hover:bg-background transition-colors text-muted-foreground hover:text-foreground"
-                title="Copy URL"
+                onClick={() => { navigator.clipboard.writeText(pngUrl).then(() => { setCopiedPng(true); setTimeout(() => setCopiedPng(false), 2000); }); }}
+                className="shrink-0 p-1.5 rounded-lg bg-white border border-gray-200 hover:border-blue-300 transition-colors text-gray-400 hover:text-blue-500 shadow-sm"
               >
                 {copiedPng ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
             </div>
-            {/* Download link */}
             <a
               href={pngUrl}
-              download={`khqr-${qrData?.md5?.slice(0,8) ?? "qr"}.png`}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold text-white transition-opacity"
-              style={{ background: "hsl(211,100%,42%)", fontFamily: "'Kantumruy Pro', sans-serif" }}
+              download={`khqr-${qrData?.md5?.slice(0, 8) ?? "qr"}.png`}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: "#2563eb", ...KH }}
             >
               <ImageDown className="h-3.5 w-3.5" />
               ទាញយក PNG
@@ -302,51 +263,49 @@ export default function GenerateQrTab() {
 
       {generateResult && <JsonViewer data={generateResult} />}
 
-      {/* Divider */}
+      {/* ── Divider ── */}
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 border-t border-border" />
-        <span className="text-[10px] text-muted-foreground font-medium tracking-wide uppercase">ឬ</span>
-        <div className="flex-1 border-t border-border" />
+        <div className="flex-1 border-t border-gray-200" />
+        <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase" style={KH}>ឬ</span>
+        <div className="flex-1 border-t border-gray-200" />
       </div>
 
-      {/* ── GET: Check MD5 ── */}
-      <ApiCard
-        method="GET"
-        endpoint={`/api/payment/check/${md5Input.trim() || "YOUR_MD5_HERE"}`}
-        title="ពិនិត្យការទូទាត់ (Check MD5)"
-      />
+      {/* ══════════════════════════════════════════
+          SECTION 2 — Check MD5
+      ══════════════════════════════════════════ */}
+      <ApiCard method="GET" endpoint={checkEndpoint} title="ផ្ទៀងផ្ទាត់ការបង់ប្រាក់ (Verify)" />
 
-      <div className="bg-card rounded-xl border p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 text-emerald-600">
-            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth={2} className="h-4 w-4 shrink-0">
+            <path d="M9 3v11l-4 5h14l-4-5V3"/><path d="M6 3h12"/>
           </svg>
-          <span className="text-sm font-semibold text-emerald-600">សាកល្បង GET</span>
+          <span className="text-sm font-semibold text-green-600" style={KH}>សាកល្បងផ្ទាល់</span>
         </div>
 
-        <input
-          type="text"
-          value={md5Input}
-          onChange={(e) => setMd5Input(e.target.value)}
-          onKeyDown={handleCheckKey}
-          placeholder="បញ្ចូល MD5 Hash..."
-          className="w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
-          data-testid="input-md5"
-        />
-
-        <button
-          onClick={handleCheck}
-          disabled={checkLoading || !md5Input.trim()}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-          style={{ background: "#10b981" }}
-          data-testid="button-check"
-        >
-          {checkLoading ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងពិនិត្យ...</>
-          ) : (
-            <><Play className="h-4 w-4 fill-white" /> ចេញ API</>
-          )}
-        </button>
+        <div className="p-4 space-y-3">
+          <input
+            type="text"
+            value={md5Input}
+            onChange={(e) => setMd5Input(e.target.value)}
+            onKeyDown={handleCheckKey}
+            placeholder="បញ្ចូលលេខកូដ MD5"
+            className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-shadow"
+            style={KH}
+            data-testid="input-md5"
+          />
+          <button
+            onClick={handleCheck}
+            disabled={checkLoading || !md5Input.trim()}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 shadow-sm hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "#16a34a", ...KH }}
+            data-testid="button-check"
+          >
+            {checkLoading
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> កំពុងពិនិត្យ...</>
+              : <><Play className="h-4 w-4 fill-white" /> ចេញ API</>}
+          </button>
+        </div>
       </div>
 
       {checkResult && <JsonViewer data={checkResult} />}
