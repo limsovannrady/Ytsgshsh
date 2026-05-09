@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, paymentsTable } from "@workspace/db";
+import { db, paymentsTable, settingsTable } from "@workspace/db";
 import { GetPaymentHistoryResponse } from "@workspace/api-zod";
 import { desc, eq, and } from "drizzle-orm";
 import { createRequire } from "module";
@@ -11,13 +11,27 @@ const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
 
 const router: IRouter = Router();
 
+async function getGlobalSettings(): Promise<Record<string, string>> {
+  const KEYS = ["BAKONG_ACCOUNT_ID", "MERCHANT_NAME", "MERCHANT_CITY", "ACQUIRING_BANK", "BAKONG_TOKEN"];
+  const rows = await db.select().from(settingsTable);
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    if (KEYS.includes(row.key) && !result[row.key]) {
+      result[row.key] = row.value;
+    }
+  }
+  return result;
+}
+
 async function getMerchantConfig(userId: string) {
   const settings = await getAllSettings(userId);
 
-  const accountId = settings["BAKONG_ACCOUNT_ID"] || process.env["BAKONG_ACCOUNT_ID"];
-  const merchantName = settings["MERCHANT_NAME"] || process.env["MERCHANT_NAME"];
-  const merchantCity = settings["MERCHANT_CITY"] || process.env["MERCHANT_CITY"] || "Phnom Penh";
-  const acquiringBank = settings["ACQUIRING_BANK"] || process.env["ACQUIRING_BANK"] || "";
+  const globalSettings = await getGlobalSettings();
+
+  const accountId = settings["BAKONG_ACCOUNT_ID"] || globalSettings["BAKONG_ACCOUNT_ID"] || process.env["BAKONG_ACCOUNT_ID"];
+  const merchantName = settings["MERCHANT_NAME"] || globalSettings["MERCHANT_NAME"] || process.env["MERCHANT_NAME"];
+  const merchantCity = settings["MERCHANT_CITY"] || globalSettings["MERCHANT_CITY"] || process.env["MERCHANT_CITY"] || "Phnom Penh";
+  const acquiringBank = settings["ACQUIRING_BANK"] || globalSettings["ACQUIRING_BANK"] || process.env["ACQUIRING_BANK"] || "";
 
   if (!accountId) throw new Error("BAKONG_ACCOUNT_ID មិនទាន់កំណត់ទេ — សូមកំណត់ក្នុង ការកំណត់");
   if (!merchantName) throw new Error("MERCHANT_NAME មិនទាន់កំណត់ទេ — សូមកំណត់ក្នុង ការកំណត់");
