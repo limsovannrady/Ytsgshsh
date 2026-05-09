@@ -113,6 +113,23 @@ async function checkPaymentStatus(
 // ─── Unified public endpoint: /api/payment?type=... ──────────────────────────
 router.all("/payment", async (req, res): Promise<void> => {
   const tgIdFromQuery = (req.query["user_tg_id"] as string | undefined)?.trim();
+  const type = (req.query["type"] as string | undefined)?.trim();
+
+  // ── Browser redirect: show PayPage instead of JSON ──────────────────────────
+  const acceptsHtml = (req.headers["accept"] ?? "").includes("text/html");
+  const isBrowserRequest = acceptsHtml && !req.headers["x-requested-with"];
+  if (isBrowserRequest && type === "generate_qr" && tgIdFromQuery) {
+    const fwd = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
+    const proto = req.headers["x-forwarded-proto"] ?? "https";
+    const origin = fwd ? `${proto}://${fwd}` : `http://localhost:${process.env["PORT"] ?? 8080}`;
+    const params = new URLSearchParams();
+    params.set("user_tg_id", tgIdFromQuery);
+    if (req.query["amount"]) params.set("amount", String(req.query["amount"]));
+    if (req.query["currency"]) params.set("currency", String(req.query["currency"]));
+    if (req.query["description"]) params.set("description", String(req.query["description"]));
+    res.redirect(302, `${origin}/?${params.toString()}`);
+    return;
+  }
 
   let userId: string;
   if (tgIdFromQuery) {
@@ -129,8 +146,6 @@ router.all("/payment", async (req, res): Promise<void> => {
     }
     userId = resolved;
   }
-
-  const type = (req.query["type"] as string | undefined)?.trim();
 
   if (!type) {
     res.status(400).json({ status: "error", message: "Missing type parameter" });
