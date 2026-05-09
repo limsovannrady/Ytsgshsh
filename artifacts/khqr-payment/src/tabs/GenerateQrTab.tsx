@@ -170,18 +170,20 @@ export default function GenerateQrTab() {
                   level="M"
                   data-testid="img-qrcode"
                 />
-                <img
-                  src={logoSrc}
-                  alt="logo"
-                  className="absolute rounded-full object-cover border-2 border-white shadow"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                  }}
-                />
+                {uploadedLogo && (
+                  <img
+                    src={uploadedLogo}
+                    alt="logo"
+                    className="absolute rounded-full object-cover border-2 border-white shadow"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  />
+                )}
               </div>
             </div>
             {paid && (
