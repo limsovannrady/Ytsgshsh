@@ -5,8 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import GenerateQrTab from "@/tabs/GenerateQrTab";
 import CheckPaymentTab from "@/tabs/CheckPaymentTab";
 import HistoryTab from "@/tabs/HistoryTab";
-import PosTab from "@/tabs/PosTab";
-import DocsTab from "@/tabs/DocsTab";
 import SettingsTab from "@/tabs/SettingsTab";
 import { BottomNav } from "@/components/BottomNav";
 import { TelegramContext, type TelegramUser } from "./TelegramContext";
@@ -14,7 +12,7 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
-export type TabId = "home" | "check" | "history" | "pos" | "docs" | "settings";
+export type TabId = "home" | "check" | "history" | "settings";
 
 function Dashboard() {
   const [tab, setTab] = useState<TabId>("home");
@@ -24,8 +22,6 @@ function Dashboard() {
         {tab === "home" && <GenerateQrTab />}
         {tab === "check" && <CheckPaymentTab />}
         {tab === "history" && <HistoryTab />}
-        {tab === "pos" && <PosTab />}
-        {tab === "docs" && <DocsTab />}
         {tab === "settings" && <SettingsTab />}
       </main>
       <BottomNav active={tab} onChange={setTab} />
