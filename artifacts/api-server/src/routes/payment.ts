@@ -97,8 +97,25 @@ async function checkPaymentStatus(
 }
 
 // ─── Unified public endpoint: /api/payment?type=... ──────────────────────────
-router.all("/payment", requireAuth, async (req, res): Promise<void> => {
-  const userId = (req as AuthedRequest).userId;
+router.all("/payment", async (req, res): Promise<void> => {
+  const tgIdFromQuery = (req.query["user_tg_id"] as string | undefined)?.trim();
+
+  let userId: string;
+  if (tgIdFromQuery) {
+    userId = `tg_${tgIdFromQuery}`;
+  } else {
+    const authHeader = req.headers["authorization"];
+    const userIdHeader = req.headers["x-telegram-user-id"];
+    const resolved =
+      (typeof userIdHeader === "string" && userIdHeader.trim()) ||
+      (authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null);
+    if (!resolved) {
+      res.status(401).json({ status: "error", message: "Missing user_tg_id or auth header" });
+      return;
+    }
+    userId = resolved;
+  }
+
   const type = (req.query["type"] as string | undefined)?.trim();
 
   if (!type) {
