@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Play, Loader2 } from "lucide-react";
-import { useCheckPayment, getCheckPaymentQueryKey } from "@workspace/api-client-react";
+import { useCheckPayment, getCheckPaymentQueryKey, customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiCard } from "@/components/ApiCard";
 import { JsonViewer } from "@/components/JsonViewer";
@@ -26,10 +26,7 @@ export default function CheckPaymentTab() {
     await queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(md5) });
     const res = await queryClient.fetchQuery({
       queryKey: getCheckPaymentQueryKey(md5),
-      queryFn: async () => {
-        const r = await fetch(`/api/payment/check/${encodeURIComponent(md5)}`);
-        return r.json();
-      },
+      queryFn: () => customFetch(`/api/payment/check/${encodeURIComponent(md5)}`),
     });
     setResult(res);
     setLoading(false);
