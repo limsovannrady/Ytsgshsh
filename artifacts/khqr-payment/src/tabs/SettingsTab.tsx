@@ -30,8 +30,8 @@ const FIELDS = [
   },
   {
     key: "BAKONG_TOKEN",
-    label: "Bakong Token (rbk_...)",
-    placeholder: "rbk_...",
+    label: "Bakong Token (rbk_... ឬ eyJ...)",
+    placeholder: "rbk_... ឬ eyJ... (JWT)",
     sensitive: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">

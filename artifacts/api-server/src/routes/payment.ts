@@ -74,6 +74,14 @@ async function generateQr(
   return { qr: result.data.qr, md5: result.data.md5 };
 }
 
+function detectTokenEndpoint(token: string): string {
+  if (token.startsWith("rbk_")) {
+    return "https://api.bakongrelay.com/v1/check_transaction_by_md5";
+  }
+  // JWT token (eyJ...) → official Bakong NBC API
+  return "https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5";
+}
+
 async function checkPaymentStatus(
   userId: string,
   md5: string
@@ -82,18 +90,16 @@ async function checkPaymentStatus(
   const bakongToken = settings["BAKONG_TOKEN"] || process.env["BAKONG_TOKEN"];
 
   if (bakongToken) {
+    const endpoint = detectTokenEndpoint(bakongToken.trim());
     try {
-      const response = await fetch(
-        `https://api.bakongrelay.com/v1/check_transaction_by_md5`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${bakongToken}`,
-          },
-          body: JSON.stringify({ md5 }),
-        }
-      );
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bakongToken.trim()}`,
+        },
+        body: JSON.stringify({ md5 }),
+      });
       const data = await response.json() as { responseCode?: number; data?: unknown };
       const paid = data.responseCode === 0 && data.data != null;
       return { paid, data: data.data ?? null };
