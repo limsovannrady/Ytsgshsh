@@ -120,12 +120,13 @@ router.all("/payment", async (req, res): Promise<void> => {
   const acceptsHtml = (req.headers["accept"] ?? "").includes("text/html");
   const isBrowserRequest = acceptsHtml && !req.headers["x-requested-with"];
   const wantsPng = type === "qr_image" || String(req.query["format"] ?? "") === "png";
-  if (isBrowserRequest && !wantsPng && type === "generate_qr" && tgIdFromQuery) {
+  const effectiveTgId = tgIdFromQuery || process.env["DEFAULT_USER_TG_ID"] || "";
+  if (isBrowserRequest && !wantsPng && type === "generate_qr" && effectiveTgId) {
     const fwd = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
     const proto = req.headers["x-forwarded-proto"] ?? "https";
     const origin = fwd ? `${proto}://${fwd}` : `http://localhost:${process.env["PORT"] ?? 8080}`;
     const params = new URLSearchParams();
-    params.set("user_tg_id", tgIdFromQuery);
+    params.set("user_tg_id", effectiveTgId);
     if (req.query["amount"]) params.set("amount", String(req.query["amount"]));
     if (req.query["currency"]) params.set("currency", String(req.query["currency"]));
     if (req.query["description"]) params.set("description", String(req.query["description"]));
@@ -139,14 +140,17 @@ router.all("/payment", async (req, res): Promise<void> => {
   } else {
     const authHeader = req.headers["authorization"];
     const userIdHeader = req.headers["x-telegram-user-id"];
-    const resolved =
+    const fromHeader =
       (typeof userIdHeader === "string" && userIdHeader.trim()) ||
       (authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null);
-    if (!resolved) {
+    if (fromHeader) {
+      userId = fromHeader;
+    } else if (process.env["DEFAULT_USER_TG_ID"]) {
+      userId = `tg_${process.env["DEFAULT_USER_TG_ID"]}`;
+    } else {
       res.status(401).json({ status: "error", message: "Missing user_tg_id or auth header" });
       return;
     }
-    userId = resolved;
   }
 
   if (!type) {
