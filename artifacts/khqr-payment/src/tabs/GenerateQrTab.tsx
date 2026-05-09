@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Play, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Play, CheckCircle2, Clock, Copy, Check, ImageDown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCheckPayment, getCheckPaymentQueryKey, customFetch, useGetSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,7 @@ export default function GenerateQrTab() {
   const [qrData, setQrData] = useState<{ qr: string; md5: string; amount: number; currency: string } | null>(null);
   const [paid, setPaid] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedPng, setCopiedPng] = useState(false);
 
   useCheckPayment(
     qrData?.md5 ?? "",
@@ -54,6 +55,8 @@ export default function GenerateQrTab() {
     }
   );
 
+  const [pngUrl, setPngUrl] = useState<string | null>(null);
+
   const handleGenerate = async () => {
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0) {
@@ -62,6 +65,7 @@ export default function GenerateQrTab() {
     }
     setPaid(false);
     setQrData(null);
+    setPngUrl(null);
     setIsGenerating(true);
     try {
       const userId = getTelegramUserId();
@@ -84,6 +88,16 @@ export default function GenerateQrTab() {
       setGenerateResult(json);
       setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
       queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
+
+      // ── build PNG URL ──────────────────────────────────────────────────────
+      const pngParams = new URLSearchParams({
+        type: "qr_image",
+        user_tg_id: userId,
+        amount: String(num),
+        currency,
+      });
+      if (description) pngParams.set("description", description);
+      setPngUrl(`${window.location.origin}/api/payment?${pngParams.toString()}`);
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "មិនអាចបង្កើត QR បានទេ — សូមពិនិត្យការកំណត់";
       setGenerateResult({ status: "error", message: msg });
@@ -232,6 +246,56 @@ export default function GenerateQrTab() {
           <div className="w-full bg-muted rounded-lg px-3 py-2">
             <p className="text-[10px] text-muted-foreground mb-0.5">MD5</p>
             <code className="text-xs font-mono break-all" data-testid="text-md5">{qrData.md5}</code>
+          </div>
+        </div>
+      )}
+
+      {/* ── PNG URL Card ── */}
+      {pngUrl && (
+        <div className="bg-card rounded-xl border overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b" style={{ background: "linear-gradient(90deg,#0d2044,#0a3060)" }}>
+            <ImageDown className="h-3.5 w-3.5 text-white/70" />
+            <span className="text-xs font-semibold text-white/90" style={{ fontFamily: "'Kantumruy Pro', sans-serif" }}>
+              URL រូបភាព QR Code (PNG)
+            </span>
+          </div>
+          <div className="p-3 space-y-2">
+            {/* Preview */}
+            <div className="flex justify-center">
+              <img
+                src={pngUrl}
+                alt="QR PNG preview"
+                className="h-28 w-28 rounded-lg border shadow-sm object-contain bg-white"
+              />
+            </div>
+            {/* URL row */}
+            <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+              <code className="flex-1 text-[10px] font-mono text-muted-foreground break-all leading-relaxed">
+                {pngUrl}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(pngUrl).then(() => {
+                    setCopiedPng(true);
+                    setTimeout(() => setCopiedPng(false), 2000);
+                  });
+                }}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-background transition-colors text-muted-foreground hover:text-foreground"
+                title="Copy URL"
+              >
+                {copiedPng ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+            {/* Download link */}
+            <a
+              href={pngUrl}
+              download={`khqr-${qrData?.md5?.slice(0,8) ?? "qr"}.png`}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold text-white transition-opacity"
+              style={{ background: "hsl(211,100%,42%)", fontFamily: "'Kantumruy Pro', sans-serif" }}
+            >
+              <ImageDown className="h-3.5 w-3.5" />
+              ទាញយក PNG
+            </a>
           </div>
         </div>
       )}
