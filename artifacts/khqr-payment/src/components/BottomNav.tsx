@@ -3,7 +3,6 @@ import type { TabId } from "@/App";
 
 const tabs: { id: TabId; icon: typeof Home; label: string }[] = [
   { id: "home",     icon: Home,     label: "ទំព័រដើម" },
-  { id: "check",    icon: Package,  label: "ពិនិត្យ" },
   { id: "history",  icon: History,  label: "ប្រវត្តិ" },
   { id: "settings", icon: Settings, label: "កំណត់" },
 ];
