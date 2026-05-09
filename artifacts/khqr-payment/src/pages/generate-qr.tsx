@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, CheckCircle2, Clock, Copy, RefreshCw, QrCode } from "lucide-react";
-import { useGenerateQr, useCheckPayment, getCheckPaymentQueryKey } from "@workspace/api-client-react";
+import { useCheckPayment, getCheckPaymentQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number } } } };
+  }
+}
+
+function getTelegramUserId(): string {
+  return String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id ?? "guest");
+}
 
 const schema = z.object({
   amount: z.coerce.number().positive("Amount must be positive"),
@@ -35,7 +45,7 @@ export default function GenerateQrPage() {
     defaultValues: { amount: 0.01, currency: "USD", description: "" },
   });
 
-  const generateQr = useGenerateQr();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: checkData } = useCheckPayment(
     qrData?.md5 ?? "",
@@ -60,19 +70,33 @@ export default function GenerateQrPage() {
     setPaid(false);
     setQrData(null);
     setPollEnabled(false);
-    generateQr.mutate(
-      { data: { amount: values.amount, currency: values.currency, description: values.description || undefined } },
-      {
-        onSuccess: (data) => {
-          setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
-          setPollEnabled(true);
-          queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to generate QR code. Check your Bakong token.", variant: "destructive" });
-        },
+    setIsGenerating(true);
+    try {
+      const userId = getTelegramUserId();
+      const params = new URLSearchParams({
+        type: "generate_qr",
+        user_tg_id: userId,
+        amount: String(values.amount),
+        currency: values.currency,
+      });
+      if (values.description) params.set("description", values.description);
+
+      const res = await fetch(`${window.location.origin}/api/payment?${params.toString()}`);
+      const json = await res.json() as { status: string; data?: { qr: string; md5: string; amount: number; currency: string }; message?: string };
+
+      if (!res.ok || json.status !== "success" || !json.data) {
+        throw new Error(json.message ?? "Failed to generate QR code");
       }
-    );
+
+      const data = json.data;
+      setQrData({ qr: data.qr, md5: data.md5, amount: data.amount, currency: data.currency });
+      setPollEnabled(true);
+      queryClient.invalidateQueries({ queryKey: getCheckPaymentQueryKey(data.md5) });
+    } catch (err) {
+      toast({ title: "Error", description: (err as Error).message ?? "Failed to generate QR code.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -161,10 +185,10 @@ export default function GenerateQrPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={generateQr.isPending}
+                disabled={isGenerating}
                 data-testid="button-generate-qr"
               >
-                {generateQr.isPending ? (
+                {isGenerating ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
                 ) : (
                   <><QrCode className="mr-2 h-4 w-4" /> Generate QR Code</>
