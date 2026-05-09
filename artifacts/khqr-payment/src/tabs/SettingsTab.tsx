@@ -51,7 +51,7 @@ function getLogoDisplayName(logoData: string): string {
 export default function SettingsTab() {
   const { toast } = useToast();
   const tgUser = useTelegramUser();
-  const { data, isLoading } = useGetSettings();
+  const { data } = useGetSettings();
   const saveSettings = useSaveSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -155,12 +155,7 @@ export default function SettingsTab() {
           <span className="text-sm font-semibold text-blue-600">ការកំណត់គណនីរបស់អ្នក</span>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4">
 
             {/* Regular fields */}
             {FIELDS.map((f) => (
@@ -227,12 +222,11 @@ export default function SettingsTab() {
             </div>
 
           </div>
-        )}
 
         <div className="px-4 pb-4">
           <button
             onClick={handleSave}
-            disabled={saveSettings.isPending || isLoading}
+            disabled={saveSettings.isPending}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60 shadow-sm"
             style={{ background: "hsl(211, 100%, 42%)" }}
           >
